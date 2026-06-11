@@ -15,6 +15,7 @@ import {
   CloudRain,
   X,
   Pencil,
+  MapPin,
 } from 'lucide-react';
 
 interface Piloto {
@@ -25,6 +26,8 @@ interface Piloto {
 interface Fazenda {
   id: string;
   nome: string;
+  cidade?: string;
+  estado?: string;
 }
 
 interface Drone {
@@ -66,20 +69,19 @@ const formatDateFull = (dateString: string) => {
   });
 };
 
+const formatTime = (date: Date) => {
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+};
+
 // Mock data for climate
 const climateData = {
+  city: 'Uberaba',
+  state: 'MG',
   temp: 22,
   humidity: 71,
   windSpeed: 8,
   rainChance: 10,
-};
-
-// Mock data for daily summary
-const dailySummary = {
-  applications: 4,
-  area: 820,
-  hours: 12.5,
-  activePilots: 3,
+  lastUpdate: new Date(),
 };
 
 const periodOptions = [
@@ -117,9 +119,9 @@ export default function DashboardPage() {
           { data: farmsData, error: farmsError },
           { data: dronesData, error: dronesError },
         ] = await Promise.all([
-          supabase.from('aplicacoes').select('*').order('data_aplicacao', { ascending: false }).limit(20),
+          supabase.from('aplicacoes').select('*').order('data_aplicacao', { ascending: false }).limit(50),
           supabase.from('profiles').select('id, full_name'),
-          supabase.from('fazendas').select('id, nome'),
+          supabase.from('fazendas').select('id, nome, cidade, estado'),
           supabase.from('drones').select('id, identificador'),
         ]);
 
@@ -219,12 +221,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main content grid */}
-      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        {/* Left column */}
-        <div className="space-y-6">
+      {/* Main layout */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left: Main area for records (2/3 width) */}
+        <div className="flex-1 lg:w-2/3">
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <KpiCard
               title="Aplicações"
               value={metrics.totalApplications}
@@ -251,65 +253,26 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Daily Summary */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Resumo do Dia
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Aplicações
-                </p>
-                <p className="text-xl font-bold text-gray-900">
-                  {dailySummary.applications}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Área
-                </p>
-                <p className="text-xl font-bold text-gray-900">
-                  {dailySummary.area} ha
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Horas de Voo
-                </p>
-                <p className="text-xl font-bold text-gray-900">
-                  {dailySummary.hours.toFixed(1)} h
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Pilotos Ativos
-                </p>
-                <p className="text-xl font-bold text-gray-900">
-                  {dailySummary.activePilots}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Records Table */}
+          {/* Main Records Table */}
           <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Últimos registros
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Registros de Aplicação
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
                   Clique em qualquer linha para ver os detalhes da aplicação.
                 </p>
               </div>
-              <span className="rounded-full bg-[#39B54A]/10 px-3 py-1 text-sm font-semibold text-[#0F5A6B]">
+              <span className="rounded-full bg-[#39B54A]/10 px-4 py-2 text-sm font-semibold text-[#0F5A6B]">
                 Total: {records.length}
               </span>
             </div>
-            <div className="mt-5">
+            <div>
               {loading ? (
-                <p className="text-gray-500 py-8 text-center">Carregando…</p>
+                <div className="flex items-center justify-center py-16">
+                  <p className="text-gray-500">Carregando registros…</p>
+                </div>
               ) : (
                 <RecordsTable
                   records={records}
@@ -329,50 +292,67 @@ export default function DashboardPage() {
           </section>
         </div>
 
-        {/* Right column */}
-        <div className="space-y-6">
+        {/* Right: Side widgets (1/3 width) */}
+        <div className="w-full lg:w-1/3 space-y-6">
           {/* Climate Widget */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Condições Climáticas
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Sun className="h-6 w-6 text-yellow-500" />
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {climateData.temp}°C
-                  </p>
-                </div>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Condições Climáticas
+              </h3>
+              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Atualizado às {formatTime(climateData.lastUpdate)}</span>
               </div>
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
-                <div>
-                  <div className="flex items-center gap-2 text-gray-500 mb-1">
-                    <Droplets className="h-4 w-4" />
-                    <span className="text-xs uppercase tracking-wide">Umidade</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {climateData.humidity}%
-                  </p>
+            </div>
+
+            {/* Location */}
+            <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
+              <MapPin className="h-4 w-4 text-[#0F5A6B]" />
+              <span>
+                {climateData.city}, {climateData.state}
+              </span>
+            </div>
+
+            {/* Main temp */}
+            <div className="flex items-center gap-4 mb-6">
+              <Sun className="h-10 w-10 text-yellow-500" />
+              <div>
+                <p className="text-4xl font-bold text-gray-900">
+                  {climateData.temp}°C
+                </p>
+                <p className="text-sm text-gray-500">Temperatura</p>
+              </div>
+            </div>
+
+            {/* Other indicators */}
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 text-gray-500 mb-1.5">
+                  <Droplets className="h-4 w-4" />
+                  <span className="text-xs uppercase tracking-wide">Umidade</span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 text-gray-500 mb-1">
-                    <Wind className="h-4 w-4" />
-                    <span className="text-xs uppercase tracking-wide">Vento</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {climateData.windSpeed} km/h
-                  </p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {climateData.humidity}%
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 text-gray-500 mb-1.5">
+                  <Wind className="h-4 w-4" />
+                  <span className="text-xs uppercase tracking-wide">Vento</span>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 text-gray-500 mb-1">
-                    <CloudRain className="h-4 w-4" />
-                    <span className="text-xs uppercase tracking-wide">Chuva</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {climateData.rainChance}%
-                  </p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {climateData.windSpeed} km/h
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 text-gray-500 mb-1.5">
+                  <CloudRain className="h-4 w-4" />
+                  <span className="text-xs uppercase tracking-wide">Chuva</span>
                 </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {climateData.rainChance}%
+                </p>
               </div>
             </div>
           </div>
