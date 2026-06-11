@@ -107,27 +107,31 @@ export default function Sidebar() {
             {sidebarCollapsed ? (
               <div className="flex items-center justify-center w-full">
                 <Image
-                  src="/logos/pulvion-icon-64.png"
+                  src="/logos/pulvion-symbol-48.png"
                   alt="PulviOn"
-                  width={40}
-                  height={40}
-                  className="h-10 w-10"
+                  width={48}
+                  height={48}
+                  className="object-contain transition-all duration-200"
+                  priority
                 />
               </div>
             ) : (
-              <Image
-                src="/logos/pulvion-logo-light-150.png"
-                alt="PulviOn"
-                width={140}
-                height={48}
-                className="h-9 w-auto"
-              />
+              <div className="flex-1">
+                <Image
+                  src="/logos/pulvion-logo-full-light-180w.png"
+                  alt="PulviOn"
+                  width={180}
+                  height={48}
+                  className="object-contain w-full max-w-[180px] transition-all duration-200"
+                  priority
+                />
+              </div>
             )}
             
             {/* Toggle button (desktop) */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex items-center justify-center p-1.5 rounded-lg hover:bg-white/10 transition"
+              className="hidden lg:flex items-center justify-center p-1.5 rounded-xl hover:bg-white/10 transition"
               aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
             >
               {sidebarCollapsed ? (
@@ -172,7 +176,7 @@ export default function Sidebar() {
                         />
                         
                         {sidebarCollapsed ? (
-                          <div className="absolute left-20 top-1/2 -translate-y-1/2 bg-[#0F5A6B] text-white text-xs px-3 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-50 border border-white/10">
+                          <div className="absolute left-20 top-1/2 -translate-y-1/2 bg-[#0F5A6B] text-white text-xs px-3 py-1.5 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-50 border border-white/10">
                             {item.label}
                           </div>
                         ) : (
@@ -195,7 +199,7 @@ export default function Sidebar() {
               className="group relative flex items-center justify-center w-full p-2.5 rounded-xl hover:bg-white/5 transition-all duration-200"
             >
               <LogOut className="h-5 w-5 text-white/60 group-hover:text-white" />
-              <div className="absolute left-20 top-1/2 -translate-y-1/2 bg-[#0F5A6B] text-white text-xs px-3 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-50 border border-white/10">
+              <div className="absolute left-20 top-1/2 -translate-y-1/2 bg-[#0F5A6B] text-white text-xs px-3 py-1.5 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-50 border border-white/10">
                 Sair do sistema
               </div>
             </button>
