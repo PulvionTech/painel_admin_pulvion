@@ -183,19 +183,36 @@ export default function DashboardPage() {
     setSelectedRecord(null);
   };
 
+  // Format short date (dd mmm yyyy)
+  const formatShortDate = (date: Date) => {
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            Dashboard Operacional
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Visão geral da operação agrícola
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 pb-2">
+        <div className="space-y-1">
+          <p className="text-lg font-semibold text-gray-900">
+            Bom dia, Administrador
           </p>
-          <p className="text-sm text-gray-400 mt-2">
-            {formatDateFull(new Date().toISOString())}
+          <p className="text-sm text-gray-600">
+            {formatShortDate(new Date())}
+          </p>
+        </div>
+        <div className="text-right space-y-0.5">
+          <p className="text-sm font-semibold text-gray-900">
+            PulviOn Admin
+          </p>
+          <p className="text-xs text-gray-500">
+            Versão 1.0.0
+          </p>
+          <p className="text-xs text-gray-400">
+            Última sincronização: {formatTime(new Date())}
           </p>
         </div>
       </div>
