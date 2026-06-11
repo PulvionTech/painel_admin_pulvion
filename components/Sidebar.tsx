@@ -5,38 +5,63 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  DashboardIcon,
-  ReportsIcon,
-  CadastrosIcon,
-  SheetsIcon,
-  WhiteLabelIcon,
-  MenuIcon,
-  XIcon,
-} from '@/components/Icons';
+  LayoutDashboard,
+  BarChart3,
+  Database,
+  FileSpreadsheet,
+  Palette,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  User,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
-const items = [
-  { label: 'Dashboard', href: '/dashboard', icon: DashboardIcon },
-  { label: 'Relatórios', href: '/dashboard/relatorios', icon: ReportsIcon },
-  { label: 'Cadastros', href: '/dashboard/cadastros', icon: CadastrosIcon },
-  { label: 'Integração Sheets', href: '/dashboard/integracao', icon: SheetsIcon },
-  { label: 'White Label', href: '/dashboard/white-label', icon: WhiteLabelIcon },
+// Navigation items organized by categories
+const categories = [
+  {
+    label: 'Geral',
+    items: [
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Operação',
+    items: [
+      { label: 'Cadastros', href: '/dashboard/cadastros', icon: Database },
+      { label: 'Relatórios', href: '/dashboard/relatorios', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Integrações',
+    items: [
+      { label: 'Sheets', href: '/dashboard/integracao', icon: FileSpreadsheet },
+    ],
+  },
+  {
+    label: 'Configuração',
+    items: [
+      { label: 'White Label', href: '/dashboard/white-label', icon: Palette },
+    ],
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Check if user is on mobile to auto-collapse
-    const checkMobile = () => {
-      setMenuOpen(window.innerWidth >= 1024);
+    // Auto-collapse on smaller screens
+    const handleResize = () => {
+      setSidebarCollapsed(window.innerWidth < 1200);
     };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const handleLogout = async () => {
@@ -50,7 +75,7 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu overlay */}
+      {/* Mobile overlay */}
       {isMobileMenuOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -58,127 +83,144 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Mobile hamburger button */}
+      {/* Mobile hamburger */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-pulvion-teal text-white rounded-xl shadow-lg hover:bg-pulvion-teal/90 transition"
-        aria-label="Abrir menu"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition"
       >
-        {isMobileMenuOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
+        {isMobileMenuOpen ? <X className="h-5 w-5 text-gray-700" /> : <Menu className="h-5 w-5 text-gray-700" />}
       </button>
 
       {/* Sidebar */}
       <aside
         className={`
           fixed lg:static z-50 lg:z-auto flex flex-col
-          bg-gradient-to-b from-pulvion-teal to-[#0C4554]
-          text-white min-h-screen
+          bg-[#0F5A6B] min-h-screen
           transition-all duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          ${menuOpen ? 'w-72' : 'w-20 lg:w-20'}
+          ${sidebarCollapsed ? 'w-20' : 'w-64'}
         `}
       >
-        {/* Top section */}
-        <div className="p-6 flex flex-col gap-6">
+        {/* Logo area */}
+        <div className="p-4 border-b border-white/10">
           <div className="flex items-center justify-between">
-            {menuOpen ? (
-              <div className="flex items-center gap-3">
-                <Image
-                  src="/logos/pulvion-logo-light-150.png"
-                  alt="PulviOn"
-                  width={150}
-                  height={60}
-                  className="h-10 w-auto"
-                />
-              </div>
-            ) : (
+            {sidebarCollapsed ? (
               <div className="flex items-center justify-center w-full">
                 <Image
-                  src="/logos/pulvion-logo-light-150.png"
+                  src="/logos/pulvion-icon-64.png"
                   alt="PulviOn"
                   width={40}
                   height={40}
-                  className="h-10 w-10 object-contain"
+                  className="h-10 w-10"
                 />
               </div>
+            ) : (
+              <Image
+                src="/logos/pulvion-logo-light-150.png"
+                alt="PulviOn"
+                width={140}
+                height={48}
+                className="h-9 w-auto"
+              />
             )}
             
             {/* Toggle button (desktop) */}
             <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="hidden lg:flex items-center justify-center p-2 rounded-xl hover:bg-white/10 transition"
-              aria-label={menuOpen ? "Recolher menu" : "Expandir menu"}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:flex items-center justify-center p-1.5 rounded-lg hover:bg-white/10 transition"
+              aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
             >
-              {menuOpen ? (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+              {sidebarCollapsed ? (
+                <ChevronRight className="h-4 w-4 text-white/70" />
               ) : (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronLeft className="h-4 w-4 text-white/70" />
               )}
             </button>
           </div>
-
-          {menuOpen && (
-            <p className="text-sm text-white/70 max-w-[230px]">
-              Acompanhe operações, Sheets e cadastros com visual moderna.
-            </p>
-          )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-2 py-4">
-          {items.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`
-                  flex items-center gap-3 px-4 py-4 rounded-2xl
-                  text-sm transition-all duration-200 group
-                  ${isActive ? 'bg-pulvion-green text-white shadow-lg shadow-pulvion-green/25' : 'text-white/70 hover:bg-white/10 hover:text-white'}
-                `}
-              >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {menuOpen && <span className="font-medium">{item.label}</span>}
-                {!menuOpen && (
-                  <div className="absolute left-24 bg-slate-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
-                    {item.label}
-                  </div>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto py-4 px-3">
+          {categories.map((category) => (
+            <div key={category.label} className="mb-6">
+              {!sidebarCollapsed && (
+                <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/40 px-3 mb-2">
+                  {category.label}
+                </p>
+              )}
+              <ul className="space-y-1">
+                {category.items.map((item) => {
+                  const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+                  const Icon = item.icon;
+
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`
+                          group relative flex items-center gap-3 px-3 py-2.5 rounded-xl
+                          text-sm font-medium transition-all duration-200
+                          ${isActive
+                            ? 'bg-[#39B54A]/20 text-white border-l-2 border-[#39B54A]'
+                            : 'text-white/60 hover:bg-white/5 hover:text-white border-l-2 border-transparent'
+                          }
+                        `}
+                      >
+                        <Icon
+                          className={`h-5 w-5 flex-shrink-0 ${isActive ? 'text-[#39B54A]' : 'text-white/60 group-hover:text-white'}`}
+                        />
+                        
+                        {sidebarCollapsed ? (
+                          <div className="absolute left-20 top-1/2 -translate-y-1/2 bg-[#0F5A6B] text-white text-xs px-3 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-50 border border-white/10">
+                            {item.label}
+                          </div>
+                        ) : (
+                          <span className="whitespace-nowrap">{item.label}</span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
         </nav>
 
-        {/* Bottom section */}
-        <div className="p-4 mt-auto">
-          <button
-            onClick={handleLogout}
-            className={`
-              flex items-center gap-3 w-full px-4 py-4 rounded-2xl
-              text-white/70 hover:bg-red-500/20 hover:text-red-200
-              transition-all duration-200 group
-            `}
-          >
-            <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            {menuOpen && <span className="font-medium">Sair do sistema</span>}
-            {!menuOpen && (
-              <div className="absolute left-24 bg-red-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
+        {/* User section */}
+        <div className="border-t border-white/10 p-3">
+          {sidebarCollapsed ? (
+            <button
+              onClick={handleLogout}
+              className="group relative flex items-center justify-center w-full p-2.5 rounded-xl hover:bg-white/5 transition-all duration-200"
+            >
+              <LogOut className="h-5 w-5 text-white/60 group-hover:text-white" />
+              <div className="absolute left-20 top-1/2 -translate-y-1/2 bg-[#0F5A6B] text-white text-xs px-3 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-50 border border-white/10">
                 Sair do sistema
               </div>
-            )}
-          </button>
-
-          {menuOpen && (
-            <div className="text-xs text-white/40 pt-4 border-t border-white/10">
-              <p>PulviOn Admin © 2026</p>
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 px-3 py-3">
+                <div className="w-9 h-9 rounded-xl bg-[#39B54A]/20 flex items-center justify-center">
+                  <User className="h-5 w-5 text-white/70" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">
+                    Usuário
+                  </p>
+                  <p className="text-xs text-white/50 truncate">
+                    Administrador
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:bg-white/5 hover:text-white transition-all duration-200"
+              >
+                <LogOut className="h-5 w-5" />
+                Sair do sistema
+              </button>
             </div>
           )}
         </div>
