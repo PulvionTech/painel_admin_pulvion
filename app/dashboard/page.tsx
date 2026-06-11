@@ -59,16 +59,6 @@ const formatDate = (dateString: string) => {
   return date.toLocaleDateString('pt-BR');
 };
 
-const formatDateFull = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
-
 const formatTime = (date: Date) => {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 };
@@ -183,52 +173,23 @@ export default function DashboardPage() {
     setSelectedRecord(null);
   };
 
-  // Format short date (dd mmm yyyy)
-  const formatShortDate = (date: Date) => {
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 pb-2">
-        <div className="space-y-1">
-          <p className="text-lg font-semibold text-gray-900">
-            Bom dia, Administrador
-          </p>
-          <p className="text-sm text-gray-600">
-            {formatShortDate(new Date())}
-          </p>
-        </div>
-        <div className="text-right space-y-0.5">
-          <p className="text-sm font-semibold text-gray-900">
-            PulviOn Admin
-          </p>
-          <p className="text-xs text-gray-500">
-            Versão 1.0.0
-          </p>
-          <p className="text-xs text-gray-400">
-            Última sincronização: {formatTime(new Date())}
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-5">
       {/* Period filter */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3">
+      <div className="flex items-center gap-3">
+        <p className="text-sm font-semibold text-gray-700">
+          Período: {periodOptions.find(p => p.value === selectedPeriod)?.label}
+        </p>
         <div className="flex gap-2 overflow-x-auto">
           {periodOptions.map((period) => (
             <button
               key={period.value}
               onClick={() => setSelectedPeriod(period.value)}
               className={`
-                px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap
+                px-4 py-1.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap
                 ${selectedPeriod === period.value
                   ? 'bg-[#39B54A] text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  : 'text-gray-600 hover:bg-gray-100 border border-gray-200'
                 }
               `}
             >
@@ -238,56 +199,49 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main layout */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left: Main area for records (2/3 width) */}
-        <div className="flex-1 lg:w-2/3">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <KpiCard
-              title="Aplicações"
-              value={metrics.totalApplications}
-              icon={ClipboardList}
-              delta={`Últimos ${selectedPeriod === '30days' ? '30 dias' : periodOptions.find(p => p.value === selectedPeriod)?.label}`}
-            />
-            <KpiCard
-              title="Área Aplicada"
-              value={`${metrics.totalArea.toFixed(0)} ha`}
-              icon={LandPlot}
-              delta={`Últimos ${selectedPeriod === '30days' ? '30 dias' : periodOptions.find(p => p.value === selectedPeriod)?.label}`}
-            />
-            <KpiCard
-              title="Horas de Voo"
-              value={`${metrics.totalHours.toFixed(1)} h`}
-              icon={Clock}
-              delta={`Últimos ${selectedPeriod === '30days' ? '30 dias' : periodOptions.find(p => p.value === selectedPeriod)?.label}`}
-            />
-            <KpiCard
-              title="Fazendas"
-              value={metrics.totalFarms}
-              icon={Warehouse}
-              delta="Ativas no sistema"
-            />
-          </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard
+          title="Aplicações"
+          value={metrics.totalApplications}
+          icon={ClipboardList}
+        />
+        <KpiCard
+          title="Área Aplicada"
+          value={`${metrics.totalArea.toFixed(0)} ha`}
+          icon={LandPlot}
+        />
+        <KpiCard
+          title="Horas de Voo"
+          value={`${metrics.totalHours.toFixed(1)} h`}
+          icon={Clock}
+        />
+        <KpiCard
+          title="Fazendas"
+          value={metrics.totalFarms}
+          icon={Warehouse}
+        />
+      </div>
 
+      {/* Main layout */}
+      <div className="flex flex-col lg:flex-row gap-5">
+        {/* Left: Main area for records (70% width) */}
+        <div className="flex-1 lg:w-[70%]">
           {/* Main Records Table */}
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-lg font-semibold text-gray-900">
                   Registros de Aplicação
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Clique em qualquer linha para ver os detalhes da aplicação.
+                  Total: {records.length}
                 </p>
               </div>
-              <span className="rounded-full bg-[#39B54A]/10 px-4 py-2 text-sm font-semibold text-[#0F5A6B]">
-                Total: {records.length}
-              </span>
             </div>
             <div>
               {loading ? (
-                <div className="flex items-center justify-center py-16">
+                <div className="flex items-center justify-center py-12">
                   <p className="text-gray-500">Carregando registros…</p>
                 </div>
               ) : (
@@ -309,65 +263,64 @@ export default function DashboardPage() {
           </section>
         </div>
 
-        {/* Right: Side widgets (1/3 width) */}
-        <div className="w-full lg:w-1/3 space-y-6">
+        {/* Right: Side widgets (30% width) */}
+        <div className="w-full lg:w-[30%]">
           {/* Climate Widget */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-900">
                 Condições Climáticas
               </h3>
               <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                <Clock className="h-3.5 w-3.5" />
+                <Clock className="h-3 w-3" />
                 <span>Atualizado às {formatTime(climateData.lastUpdate)}</span>
               </div>
             </div>
 
             {/* Location */}
-            <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
-              <MapPin className="h-4 w-4 text-[#0F5A6B]" />
+            <div className="flex items-center gap-2 mb-3 text-sm text-gray-600">
+              <MapPin className="h-3.5 w-3.5 text-[#0F5A6B]" />
               <span>
                 {climateData.city}, {climateData.state}
               </span>
             </div>
 
             {/* Main temp */}
-            <div className="flex items-center gap-4 mb-6">
-              <Sun className="h-10 w-10 text-yellow-500" />
+            <div className="flex items-center gap-3 mb-3">
+              <Sun className="h-7 w-7 text-yellow-500" />
               <div>
-                <p className="text-4xl font-bold text-gray-900">
+                <p className="text-2xl font-bold text-gray-900">
                   {climateData.temp}°C
                 </p>
-                <p className="text-sm text-gray-500">Temperatura</p>
               </div>
             </div>
 
             {/* Other indicators */}
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
               <div className="text-center">
-                <div className="flex items-center justify-center gap-2 text-gray-500 mb-1.5">
-                  <Droplets className="h-4 w-4" />
+                <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                  <Droplets className="h-3.5 w-3.5" />
                   <span className="text-xs uppercase tracking-wide">Umidade</span>
                 </div>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-gray-900">
                   {climateData.humidity}%
                 </p>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center gap-2 text-gray-500 mb-1.5">
-                  <Wind className="h-4 w-4" />
+                <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                  <Wind className="h-3.5 w-3.5" />
                   <span className="text-xs uppercase tracking-wide">Vento</span>
                 </div>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-gray-900">
                   {climateData.windSpeed} km/h
                 </p>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center gap-2 text-gray-500 mb-1.5">
-                  <CloudRain className="h-4 w-4" />
+                <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                  <CloudRain className="h-3.5 w-3.5" />
                   <span className="text-xs uppercase tracking-wide">Chuva</span>
                 </div>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-gray-900">
                   {climateData.rainChance}%
                 </p>
               </div>
@@ -380,9 +333,9 @@ export default function DashboardPage() {
       {selectedRecord && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900">
                   {isEditing ? 'Editar Aplicação' : 'Detalhes da Aplicação'}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
@@ -393,9 +346,9 @@ export default function DashboardPage() {
                 {!isEditing && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="p-2 rounded-xl hover:bg-gray-100 transition text-gray-600"
+                    className="p-1.5 rounded-xl hover:bg-gray-100 transition text-gray-600"
                   >
-                    <Pencil className="h-5 w-5" />
+                    <Pencil className="h-4 w-4" />
                   </button>
                 )}
                 <button
@@ -403,14 +356,14 @@ export default function DashboardPage() {
                     setSelectedRecord(null);
                     setIsEditing(false);
                   }}
-                  className="p-2 rounded-xl hover:bg-gray-100 transition text-gray-500"
+                  className="p-1.5 rounded-xl hover:bg-gray-100 transition text-gray-500"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-5 space-y-5">
               {/* Seção Principal */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -441,22 +394,22 @@ export default function DashboardPage() {
 
               <div className="border-t border-gray-100 pt-4">
                 <h4 className="text-sm font-semibold text-gray-900 mb-3">Dados da Operação</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-gray-50 rounded-xl">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="p-3 bg-gray-50 rounded-xl">
                     <p className="text-xs text-gray-500 mb-1">Área (ha)</p>
-                    <p className="text-xl font-semibold text-[#0F5A6B]">
+                    <p className="text-lg font-semibold text-[#0F5A6B]">
                       {Number(selectedRecord.area_ha).toFixed(2)}
                     </p>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-gray-50 rounded-xl">
                     <p className="text-xs text-gray-500 mb-1">Horas de Voo</p>
-                    <p className="text-xl font-semibold text-[#0F5A6B]">
+                    <p className="text-lg font-semibold text-[#0F5A6B]">
                       {Number(selectedRecord.horas_voo).toFixed(1)}
                     </p>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-gray-50 rounded-xl">
                     <p className="text-xs text-gray-500 mb-1">Tipo de Serviço</p>
-                    <p className="text-xl font-semibold text-[#0F5A6B]">
+                    <p className="text-lg font-semibold text-[#0F5A6B]">
                       {selectedRecord.tipo_servico || '-'}
                     </p>
                   </div>
@@ -466,7 +419,7 @@ export default function DashboardPage() {
               {(selectedRecord.produto_nome || selectedRecord.classe_produto || selectedRecord.dosagem) && (
                 <div className="border-t border-gray-100 pt-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">Produto Aplicado</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {selectedRecord.classe_produto && (
                       <div>
                         <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Classe</p>
@@ -506,7 +459,7 @@ export default function DashboardPage() {
 
               {/* Data de criação e atualização */}
               <div className="border-t border-gray-100 pt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Criado em</p>
                     <p className="text-sm font-medium text-gray-900">
@@ -523,20 +476,20 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex gap-3">
+            <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex gap-3">
               <button
                 onClick={() => {
                   setSelectedRecord(null);
                   setIsEditing(false);
                 }}
-                className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition text-sm"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition text-sm"
               >
                 Fechar
               </button>
               {isEditing && (
                 <button
                   onClick={handleSaveEdit}
-                  className="flex-1 px-4 py-3 rounded-xl bg-[#39B54A] text-white font-semibold hover:bg-[#39B54A]/90 transition text-sm"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-[#39B54A] text-white font-semibold hover:bg-[#39B54A]/90 transition text-sm"
                 >
                   Salvar Alterações
                 </button>
