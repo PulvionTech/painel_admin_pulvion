@@ -25,8 +25,11 @@ Centralizar a gestão operacional de aplicações agrícolas em uma interface we
 ### Relatórios
 
 - Indicadores operacionais.
-- Filtros por período, piloto, fazenda e drone.
-- Tabela paginada, detalhes completos, edição e exclusão de aplicações.
+- Filtros por período, piloto, fazenda, drone, cultura e produto.
+- Tabela paginada, detalhes completos e edição de aplicações.
+- Exportação CSV compatível com Excel.
+- PDF operacional personalizado, com pré-visualização e opção para uma ou várias aplicações.
+- Compartilhamento nativo e fallback para WhatsApp ou e-mail.
 
 ### Layout compartilhado
 

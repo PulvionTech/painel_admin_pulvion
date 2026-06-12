@@ -11,6 +11,7 @@
 | Supabase JS | Auth e PostgreSQL |
 | React Hook Form | Formulários |
 | Lucide React | Ícones |
+| jsPDF + AutoTable | Geração e paginação de relatórios PDF no navegador |
 
 ## Rotas
 

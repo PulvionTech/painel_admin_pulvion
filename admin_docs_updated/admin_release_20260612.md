@@ -47,6 +47,15 @@
 
 - Build de produção executado com sucesso usando `npm run build`.
 
+## Relatórios
+
+- Filtros funcionais por período, piloto, fazenda, drone, cultura e produto.
+- Modal inicialmente somente leitura, com edição acessada pelo ícone de lápis.
+- Exportação CSV compatível com Excel.
+- PDF profissional com marca PulviOn, contexto dos filtros, totais e paginação.
+- Pré-visualização do PDF e geração para uma única aplicação ou resultado filtrado.
+- Compartilhamento por API nativa quando disponível e fallback para WhatsApp/e-mail.
+
 ## Pendências para produção
 
 - Proteger rotas `/dashboard`.
