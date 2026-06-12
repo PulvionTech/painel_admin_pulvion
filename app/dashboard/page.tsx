@@ -4,14 +4,18 @@ import { useEffect, useMemo, useState } from 'react';
 import KpiCard from '@/components/KpiCard';
 import RecordsTable from '@/components/RecordsTable';
 import WeatherCard, { WeatherData } from '@/components/WeatherCard';
+import ApplicationDetailsPanel, { ApplicationProduct, legacyProduct } from '@/components/ApplicationPresentation';
 import { supabase } from '@/lib/supabaseClient';
 import {
   ClipboardList,
   LandPlot,
   Clock,
   Warehouse,
+  Eye,
+  Save,
   X,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 
 interface Piloto {
@@ -24,6 +28,8 @@ interface Fazenda {
   nome: string;
   cidade?: string;
   estado?: string;
+  contato_nome?: string;
+  telefone?: string;
 }
 
 interface Drone {
@@ -48,6 +54,7 @@ interface Aplicacao {
   num_art: string;
   created_at?: string;
   updated_at?: string;
+  produtos?: ApplicationProduct[];
 }
 
 const formatDate = (dateString: string) => {
@@ -92,6 +99,7 @@ const periodOptions = [
   { label: '90 dias', value: '90days' },
   { label: 'Ano', value: 'year' },
 ];
+const ENTERPRISE_ID = '00000000-0000-0000-0000-000000000001';
 
 export default function DashboardPage() {
   const [aplicacoes, setAplicacoes] = useState<Aplicacao[]>([]);
@@ -114,19 +122,22 @@ export default function DashboardPage() {
           { data: pilotsData, error: pilotsError },
           { data: farmsData, error: farmsError },
           { data: dronesData, error: dronesError },
+          { data: productsData, error: productsError },
         ] = await Promise.all([
-          supabase.from('aplicacoes').select('*').order('data_aplicacao', { ascending: false }).limit(50),
-          supabase.from('profiles').select('id, full_name'),
-          supabase.from('fazendas').select('id, nome, cidade, estado'),
-          supabase.from('drones').select('id, identificador'),
+          supabase.from('aplicacoes').select('*').eq('enterprise_id', ENTERPRISE_ID).order('data_aplicacao', { ascending: false }).limit(50),
+          supabase.from('profiles').select('id, full_name').eq('enterprise_id', ENTERPRISE_ID),
+          supabase.from('fazendas').select('id, nome, cidade, estado, contato_nome, telefone').eq('enterprise_id', ENTERPRISE_ID),
+          supabase.from('drones').select('id, identificador').eq('enterprise_id', ENTERPRISE_ID),
+          supabase.from('aplicacao_produtos').select('*').eq('enterprise_id', ENTERPRISE_ID).order('created_at'),
         ]);
 
         if (appsError) throw appsError;
         if (pilotsError) throw pilotsError;
         if (farmsError) throw farmsError;
         if (dronesError) throw dronesError;
+        if (productsError) throw productsError;
 
-        setAplicacoes(appsData || []);
+        setAplicacoes((appsData || []).map((application) => ({ ...application, produtos: (productsData || []).filter((product) => product.aplicacao_id === application.id) })));
         setPilotos(pilotsData || []);
         setFazendas(farmsData || []);
         setDrones(dronesData || []);
@@ -172,6 +183,8 @@ export default function DashboardPage() {
       fazenda: fazenda?.nome || '-',
       drone: drone?.identificador || '-',
       produto: aplicacao.produto_nome,
+      contato: [fazenda?.contato_nome, fazenda?.telefone].filter(Boolean).join(' · ') || '-',
+      produtos_resumo: `${aplicacao.produtos?.length || (aplicacao.produto_nome ? 1 : 0)} produto(s)`,
     };
   });
 
@@ -210,25 +223,34 @@ export default function DashboardPage() {
       setSaveError(error.message);
       return;
     }
-    setAplicacoes((current) => current.map((item) => item.id === data.id ? data as Aplicacao : item));
-    setSelectedRecord(data as Aplicacao);
+    const updated = { ...data, produtos: selectedRecord.produtos } as Aplicacao;
+    setAplicacoes((current) => current.map((item) => item.id === data.id ? updated : item));
+    setSelectedRecord(updated);
     setIsEditing(false);
   };
 
+  const handleDelete = async () => {
+    if (!selectedRecord || !confirm('Excluir esta aplicação e seus produtos?')) return;
+    const { error } = await supabase.from('aplicacoes').delete().eq('id', selectedRecord.id);
+    if (error) return setSaveError(error.message);
+    setAplicacoes((current) => current.filter((item) => item.id !== selectedRecord.id));
+    setSelectedRecord(null);
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-4 sm:space-y-5">
       {/* Period filter */}
-      <div className="flex items-center gap-3">
-        <p className="text-sm font-semibold text-gray-700">
+      <div className="min-w-0 sm:flex sm:items-center sm:gap-3">
+        <p className="mb-2 text-xs font-semibold text-gray-700 sm:mb-0 sm:text-sm">
           Período: {periodOptions.find(p => p.value === selectedPeriod)?.label}
         </p>
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="-mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1">
           {periodOptions.map((period) => (
             <button
               key={period.value}
               onClick={() => setSelectedPeriod(period.value)}
               className={`
-                px-4 py-1.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap
+                px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap sm:px-4 sm:text-sm
                 ${selectedPeriod === period.value
                   ? 'bg-[#39B54A] text-white'
                   : 'text-gray-600 hover:bg-gray-100 border border-gray-200'
@@ -242,7 +264,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           title="Aplicações"
           value={metrics.totalApplications}
@@ -267,10 +289,11 @@ export default function DashboardPage() {
 
       <WeatherCard data={climateData} />
 
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <section className="min-w-0 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-pulvion-teal/10 text-pulvion-teal"><ClipboardList className="h-5 w-5" /></span>
                   Últimos Registros de Aplicação
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
@@ -289,14 +312,14 @@ export default function DashboardPage() {
                   onRowClick={(rec) => setSelectedRecord(aplicacoes.find(a => a.id === rec.id) || null)}
                   columns={[
                     { key: 'data', label: 'Data' },
-                    { key: 'piloto', label: 'Piloto' },
                     { key: 'fazenda', label: 'Fazenda' },
+                    { key: 'contato', label: 'Contato da Fazenda' },
+                    { key: 'piloto', label: 'Piloto' },
+                    { key: 'drone', label: 'Drone' },
                     { key: 'cultura', label: 'Cultura' },
                     { key: 'area_ha', label: 'Área (ha)' },
-                    { key: 'horas_voo', label: 'Horas' },
                     { key: 'tipo_servico', label: 'Serviço' },
-                    { key: 'produto', label: 'Produto' },
-                    { key: 'drone', label: 'Drone' },
+                    { key: 'produtos_resumo', label: 'Produtos' },
                   ]}
                 />
               )}
@@ -305,11 +328,12 @@ export default function DashboardPage() {
 
       {/* Modal de detalhes */}
       {selectedRecord && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div className="max-h-[96dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white sm:max-h-[90vh] sm:rounded-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-4 sm:p-5">
+              <div className="min-w-0">
+                <h3 className="flex items-center gap-2 truncate text-base font-semibold text-gray-900 sm:text-lg">
+                  <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-pulvion-teal/10 text-pulvion-teal">{isEditing ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</span>
                   {isEditing ? 'Editar Aplicação' : 'Detalhes da Aplicação'}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
@@ -318,9 +342,16 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 {!isEditing && (
+                  <button onClick={handleDelete} aria-label="Excluir aplicação" title="Excluir aplicação" className="rounded-xl border border-transparent p-2 text-red-600 transition hover:border-red-200 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+                {!isEditing && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="p-1.5 rounded-xl hover:bg-gray-100 transition text-gray-600"
+                    aria-label="Editar aplicação"
+                    title="Editar aplicação"
+                    className="rounded-xl border border-transparent p-2 text-pulvion-teal transition hover:border-pulvion-teal/20 hover:bg-pulvion-teal/10"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -331,7 +362,9 @@ export default function DashboardPage() {
                     setIsEditing(false);
                     setSaveError('');
                   }}
-                  className="p-1.5 rounded-xl hover:bg-gray-100 transition text-gray-500"
+                  aria-label="Fechar"
+                  title="Fechar"
+                  className="rounded-xl border border-transparent p-2 text-gray-500 transition hover:border-gray-200 hover:bg-gray-100"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -347,7 +380,22 @@ export default function DashboardPage() {
                 onChange={updateSelectedRecord}
               />
             ) : (
-            <div className="p-5 space-y-5">
+            <>
+            <div className="p-4 sm:p-5">
+              <ApplicationDetailsPanel data={{
+                data: formatDate(selectedRecord.data_aplicacao),
+                fazenda: fazendas.find((item) => item.id === selectedRecord.fazenda_id)?.nome || '—',
+                contato: [fazendas.find((item) => item.id === selectedRecord.fazenda_id)?.contato_nome, fazendas.find((item) => item.id === selectedRecord.fazenda_id)?.telefone].filter(Boolean).join(' · ') || '—',
+                piloto: pilotos.find((item) => item.id === selectedRecord.user_id)?.full_name || '—',
+                drone: drones.find((item) => item.id === selectedRecord.drone_id)?.identificador || '—',
+                cultura: selectedRecord.cultura,
+                area_ha: selectedRecord.area_ha,
+                horas_voo: selectedRecord.horas_voo,
+                tipo_servico: selectedRecord.tipo_servico,
+                produtos: selectedRecord.produtos?.length ? selectedRecord.produtos : legacyProduct(selectedRecord),
+              }} />
+            </div>
+            <div className="hidden p-5 space-y-5">
               {/* Seção Principal */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -459,9 +507,10 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+            </>
             )}
 
-            <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 border-t border-gray-100 bg-gray-50 p-4 sm:rounded-b-2xl sm:p-5">
               {saveError && <p className="basis-full text-sm text-red-600">{saveError}</p>}
               <button
                 onClick={() => {
@@ -469,16 +518,17 @@ export default function DashboardPage() {
                   setIsEditing(false);
                   setSaveError('');
                 }}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition text-sm"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
               >
-                Fechar
+                <X className="h-4 w-4" />Fechar
               </button>
               {isEditing && (
                 <button
                   onClick={handleSaveEdit}
                   disabled={loading}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-[#39B54A] text-white font-semibold hover:bg-[#39B54A]/90 transition text-sm"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#39B54A] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#39B54A]/90 disabled:opacity-50"
                 >
+                  <Save className="h-4 w-4" />
                   {loading ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               )}
@@ -505,7 +555,7 @@ function ApplicationEditForm({
 }) {
   const inputClass = 'w-full rounded-xl border border-gray-300 px-3 py-2 text-sm';
   return (
-    <div className="p-5">
+    <div className="p-4 sm:p-5">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <EditField label="Data"><input type="date" value={record.data_aplicacao.split('T')[0]} onChange={(event) => onChange('data_aplicacao', event.target.value)} className={inputClass} /></EditField>
         <EditField label="Piloto"><select value={record.user_id} onChange={(event) => onChange('user_id', event.target.value)} className={inputClass}>{pilotos.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></EditField>

@@ -1,6 +1,6 @@
 # Monitoramento por fazenda e piloto
 
-**Atualizado em:** 11 de junho de 2026
+**Atualizado em:** 12 de junho de 2026
 
 ## Monitoramento disponível hoje
 
@@ -29,7 +29,7 @@ A rota de relatórios permite filtrar aplicações por período, piloto, fazenda
 
 ## Limitações atuais
 
-- Consultas carregam conjuntos completos de dados sem paginação.
+- Consultas carregam conjuntos completos de dados; a paginação atual ocorre somente na interface.
 - Agregações são feitas no cliente.
 - Não há filtro por cultura ou serviço.
 - Não há visão comparativa entre fazendas ou pilotos.

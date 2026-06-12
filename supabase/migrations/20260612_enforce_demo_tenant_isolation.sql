@@ -1,0 +1,55 @@
+BEGIN;
+
+ALTER TABLE enterprises ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fazendas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE drones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auxiliary_lists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE aplicacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE aplicacao_produtos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS demo_tenant_access ON enterprises;
+CREATE POLICY demo_tenant_access ON enterprises
+  FOR ALL
+  USING (id = '00000000-0000-0000-0000-000000000001'::UUID)
+  WITH CHECK (id = '00000000-0000-0000-0000-000000000001'::UUID);
+
+DROP POLICY IF EXISTS demo_tenant_access ON profiles;
+CREATE POLICY demo_tenant_access ON profiles
+  FOR ALL
+  USING (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID)
+  WITH CHECK (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID);
+
+DROP POLICY IF EXISTS demo_tenant_access ON fazendas;
+CREATE POLICY demo_tenant_access ON fazendas
+  FOR ALL
+  USING (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID)
+  WITH CHECK (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID);
+
+DROP POLICY IF EXISTS demo_tenant_access ON drones;
+CREATE POLICY demo_tenant_access ON drones
+  FOR ALL
+  USING (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID)
+  WITH CHECK (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID);
+
+DROP POLICY IF EXISTS demo_tenant_access ON auxiliary_lists;
+CREATE POLICY demo_tenant_access ON auxiliary_lists
+  FOR ALL
+  USING (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID)
+  WITH CHECK (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID);
+
+DROP POLICY IF EXISTS demo_tenant_access ON aplicacoes;
+CREATE POLICY demo_tenant_access ON aplicacoes
+  FOR ALL
+  USING (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID)
+  WITH CHECK (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID);
+
+DROP POLICY IF EXISTS demo_tenant_access ON aplicacao_produtos;
+CREATE POLICY demo_tenant_access ON aplicacao_produtos
+  FOR ALL
+  USING (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID)
+  WITH CHECK (enterprise_id = '00000000-0000-0000-0000-000000000001'::UUID);
+
+NOTIFY pgrst, 'reload schema';
+
+COMMIT;

@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { ChevronRight, ClipboardList, Pencil, Save, Trash2, X } from 'lucide-react';
+import ApplicationDetailsPanel, { ApplicationProduct, legacyProduct, ProductSummary } from '@/components/ApplicationPresentation';
+import Pagination from '@/components/Pagination';
 
 interface Piloto {
   id: string;
@@ -11,6 +14,8 @@ interface Piloto {
 interface Fazenda {
   id: string;
   nome: string;
+  contato_nome?: string;
+  telefone?: string;
 }
 
 interface Drone {
@@ -33,12 +38,15 @@ interface Aplicacao {
   dosagem: number;
   unidade: string;
   num_art: string;
+  produtos?: ApplicationProduct[];
 }
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   return date.toLocaleDateString('pt-BR');
 };
+const ENTERPRISE_ID = '00000000-0000-0000-0000-000000000001';
+const PAGE_SIZE = 8;
 
 export default function RelatoriosPage() {
   const [aplicacoes, setAplicacoes] = useState<Aplicacao[]>([]);
@@ -47,6 +55,7 @@ export default function RelatoriosPage() {
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [drones, setDrones] = useState<Drone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   // Filters
   const [filtroDataInicio, setFiltroDataInicio] = useState('');
@@ -70,18 +79,21 @@ export default function RelatoriosPage() {
           { data: pilotsData },
           { data: farmsData },
           { data: dronesData },
-          { data: appsData }
+          { data: appsData },
+          { data: productRows },
         ] = await Promise.all([
-          supabase.from('profiles').select('id, full_name'),
-          supabase.from('fazendas').select('id, nome'),
-          supabase.from('drones').select('id, identificador').eq('ativo', true),
-          supabase.from('aplicacoes').select('*').order('data_aplicacao', { ascending: false })
+          supabase.from('profiles').select('id, full_name').eq('enterprise_id', ENTERPRISE_ID),
+          supabase.from('fazendas').select('id, nome, contato_nome, telefone').eq('enterprise_id', ENTERPRISE_ID),
+          supabase.from('drones').select('id, identificador').eq('enterprise_id', ENTERPRISE_ID).eq('ativo', true),
+          supabase.from('aplicacoes').select('*').eq('enterprise_id', ENTERPRISE_ID).order('data_aplicacao', { ascending: false }),
+          supabase.from('aplicacao_produtos').select('*').eq('enterprise_id', ENTERPRISE_ID).order('created_at')
         ]);
         setPilotos((pilotsData || []) as Piloto[]);
         setFazendas((farmsData || []) as Fazenda[]);
         setDrones((dronesData || []) as Drone[]);
-        setAplicacoes((appsData || []) as Aplicacao[]);
-        setFiltradas((appsData || []) as Aplicacao[]);
+        const applications = (appsData || []).map((application: Aplicacao) => ({ ...application, produtos: (productRows || []).filter((product: any) => product.aplicacao_id === application.id) }));
+        setAplicacoes(applications);
+        setFiltradas(applications);
       } catch (err) {
         console.error(err);
       } finally {
@@ -119,6 +131,7 @@ export default function RelatoriosPage() {
     }
     
     setFiltradas(filtrados);
+    setPage(1);
   }, [
     aplicacoes,
     filtroDataInicio,
@@ -127,6 +140,7 @@ export default function RelatoriosPage() {
     filtroFazenda,
     filtroDrone
   ]);
+  const paginatedApplications = filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleAbrirModal = (app: Aplicacao) => {
     setAplicacaoSelecionada(app);
@@ -138,9 +152,10 @@ export default function RelatoriosPage() {
     if (!editForm || !aplicacaoSelecionada) return;
     setSalvando(true);
     try {
+      const { produtos: _produtos, ...payload } = editForm;
       const { error } = await supabase
         .from('aplicacoes')
-        .update(editForm)
+        .update(payload)
         .eq('id', aplicacaoSelecionada.id);
       if (error) throw error;
       
@@ -166,69 +181,60 @@ export default function RelatoriosPage() {
     setFiltroDrone('');
   };
 
+  const handleExcluir = async () => {
+    if (!aplicacaoSelecionada || !confirm('Excluir esta aplicação e seus produtos?')) return;
+    const { error } = await supabase.from('aplicacoes').delete().eq('id', aplicacaoSelecionada.id);
+    if (error) return console.error(error);
+    setAplicacoes((current) => current.filter((item) => item.id !== aplicacaoSelecionada.id));
+    setModalAberto(false);
+  };
+
   const totalArea = filtradas.reduce((sum, app) => sum + (Number(app.area_ha) || 0), 0);
   const totalHoras = filtradas.reduce((sum, app) => sum + (Number(app.horas_voo) || 0), 0);
   const totalAplicacoes = filtradas.length;
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-3xl bg-white p-6 shadow-sm">
-        <div>
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-pulvion-green font-semibold">
-              Relatórios
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold text-slate-900">
-              Análises operacionais
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm text-slate-500">
-              Acompanhe o desempenho das aplicações e identifique
-              padrões operacionais com visualizações rápidas e objetivas.
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-w-0 space-y-4 sm:space-y-8">
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-3xl bg-white p-5 shadow-sm">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between text-pulvion-teal">
             <p className="font-semibold">Total de Aplicações</p>
           </div>
-          <p className="mt-4 text-3xl font-semibold text-slate-900">
+          <p className="mt-3 text-xl font-semibold text-slate-900 sm:mt-4 sm:text-3xl">
             {totalAplicacoes}
           </p>
           <p className="mt-2 text-sm text-slate-500">
             No período selecionado
           </p>
         </div>
-        <div className="rounded-3xl bg-white p-5 shadow-sm">
+        <div className="rounded-2xl bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between text-pulvion-teal">
             <p className="font-semibold">Área Total Aplicada</p>
           </div>
-          <p className="mt-4 text-3xl font-semibold text-slate-900">
+          <p className="mt-3 text-xl font-semibold text-slate-900 sm:mt-4 sm:text-3xl">
             {totalArea.toFixed(2)} ha
           </p>
           <p className="mt-2 text-sm text-slate-500">
             Soma de todas as áreas
           </p>
         </div>
-        <div className="rounded-3xl bg-white p-5 shadow-sm">
+        <div className="rounded-2xl bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between text-pulvion-teal">
             <p className="font-semibold">Total de Horas</p>
           </div>
-          <p className="mt-4 text-3xl font-semibold text-slate-900">
+          <p className="mt-3 text-xl font-semibold text-slate-900 sm:mt-4 sm:text-3xl">
             {totalHoras.toFixed(1)}h
           </p>
           <p className="mt-2 text-sm text-slate-500">
             Horas de voo totais
           </p>
         </div>
-        <div className="rounded-3xl bg-white p-5 shadow-sm">
+        <div className="rounded-2xl bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between text-pulvion-teal">
             <p className="font-semibold">Média Área/Aplicação</p>
           </div>
-          <p className="mt-4 text-3xl font-semibold text-slate-900">
+          <p className="mt-3 text-xl font-semibold text-slate-900 sm:mt-4 sm:text-3xl">
             {totalAplicacoes > 0 ? (totalArea / totalAplicacoes).toFixed(2) : '0.00'} ha
           </p>
           <p className="mt-2 text-sm text-slate-500">
@@ -238,7 +244,7 @@ export default function RelatoriosPage() {
       </div>
 
       {/* Filters */}
-      <div className="rounded-3xl bg-white p-6 shadow-sm">
+      <div className="rounded-2xl bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Filtros</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
           <div>
@@ -308,8 +314,29 @@ export default function RelatoriosPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-3xl bg-white p-6 shadow-sm overflow-x-auto">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Listagem de Aplicações</h3>
+      <div className="min-w-0 rounded-2xl bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-pulvion-teal/10 text-pulvion-teal"><ClipboardList className="h-5 w-5" /></span>
+          Listagem de Aplicações
+        </h3>
+        <div className="space-y-2 md:hidden">
+          {loading ? <p className="py-8 text-center text-sm text-gray-500">Carregando...</p> : filtradas.length === 0 ? <p className="py-8 text-center text-sm text-gray-500">Nenhuma aplicação encontrada com os filtros selecionados</p> : paginatedApplications.map((app) => {
+            const piloto = pilotos.find((item) => item.id === app.user_id);
+            const fazenda = fazendas.find((item) => item.id === app.fazenda_id);
+            return (
+              <button key={app.id} type="button" onClick={() => handleAbrirModal(app)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 p-3 text-left active:bg-gray-50">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2"><span className="text-sm font-semibold text-slate-900">{formatDate(app.data_aplicacao)}</span><span className="truncate text-sm text-slate-500">{app.cultura}</span></div>
+                  <p className="mt-1 truncate text-xs text-slate-500">{fazenda?.nome || '—'} · {[fazenda?.contato_nome, fazenda?.telefone].filter(Boolean).join(' · ') || '—'}</p>
+                  <p className="mt-1 truncate text-xs text-slate-500">{piloto?.full_name || '—'} · {drones.find((item) => item.id === app.drone_id)?.identificador || '—'}</p>
+                  <p className="mt-1 text-xs font-semibold text-pulvion-teal">{Number(app.area_ha).toFixed(2)} ha · {app.tipo_servico || '—'} · {app.produtos?.length || (app.produto_nome ? 1 : 0)} produto(s)</p>
+                </div>
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-400" />
+              </button>
+            );
+          })}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -317,10 +344,13 @@ export default function RelatoriosPage() {
                 Data
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Piloto
+                Fazenda
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Fazenda
+                Contato da Fazenda
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Piloto
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Drone
@@ -332,25 +362,28 @@ export default function RelatoriosPage() {
                 Área (ha)
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Ações
+                Serviço
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Produtos
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
                   Carregando...
                 </td>
               </tr>
             ) : filtradas.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
                   Nenhuma aplicação encontrada com os filtros selecionados
                 </td>
               </tr>
             ) : (
-              filtradas.map(app => {
+              paginatedApplications.map(app => {
                 const piloto = pilotos.find(p => p.id === app.user_id);
                 const fazenda = fazendas.find(f => f.id === app.fazenda_id);
                 const drone = drones.find(d => d.id === app.drone_id);
@@ -358,17 +391,20 @@ export default function RelatoriosPage() {
                 return (
                   <tr
                     key={app.id}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="cursor-pointer odd:bg-white even:bg-slate-50/60 hover:bg-[#39B54A]/5"
                     onClick={() => handleAbrirModal(app)}
                   >
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
                       {formatDate(app.data_aplicacao)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
-                      {piloto?.full_name || '—'}
+                      {fazenda?.nome || '—'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
-                      {fazenda?.nome || '—'}
+                      {[fazenda?.contato_nome, fazenda?.telefone].filter(Boolean).join(' · ') || '—'}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
+                      {piloto?.full_name || '—'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
                       {drone?.identificador || '—'}
@@ -377,10 +413,13 @@ export default function RelatoriosPage() {
                       {app.cultura}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
-                      {app.area_ha.toFixed(2)}
+                      {Number(app.area_ha).toFixed(2)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-pulvion-teal font-medium">
-                      Ver/Editar
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
+                      {app.tipo_servico || '—'}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
+                      <ProductSummary products={app.produtos?.length ? app.produtos : legacyProduct(app)} />
                     </td>
                   </tr>
                 );
@@ -388,26 +427,46 @@ export default function RelatoriosPage() {
             )}
           </tbody>
         </table>
+        </div>
+        <div className="mt-3">
+          <Pagination page={page} totalItems={filtradas.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
+        </div>
       </div>
 
       {/* Modal */}
       {modalAberto && aplicacaoSelecionada && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div className="max-h-[96dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4 sm:max-h-[90vh] sm:rounded-3xl sm:p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-slate-900">
+              <h3 className="flex items-center gap-2 text-xl font-semibold text-slate-900">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-pulvion-teal/10 text-pulvion-teal"><Pencil className="h-4 w-4" /></span>
                 Visualizar/Editar Aplicação
               </h3>
               <button
                 onClick={() => setModalAberto(false)}
-                className="text-slate-400 hover:text-slate-600"
+                aria-label="Fechar"
+                title="Fechar"
+                className="rounded-xl border border-transparent p-2 text-slate-400 transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-600"
               >
-                ✕
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             {editForm && (
               <div className="space-y-4">
+                <ApplicationDetailsPanel data={{
+                  data: formatDate(aplicacaoSelecionada.data_aplicacao),
+                  fazenda: fazendas.find((item) => item.id === aplicacaoSelecionada.fazenda_id)?.nome || '—',
+                  contato: [fazendas.find((item) => item.id === aplicacaoSelecionada.fazenda_id)?.contato_nome, fazendas.find((item) => item.id === aplicacaoSelecionada.fazenda_id)?.telefone].filter(Boolean).join(' · ') || '—',
+                  piloto: pilotos.find((item) => item.id === aplicacaoSelecionada.user_id)?.full_name || '—',
+                  drone: drones.find((item) => item.id === aplicacaoSelecionada.drone_id)?.identificador || '—',
+                  cultura: aplicacaoSelecionada.cultura,
+                  area_ha: aplicacaoSelecionada.area_ha,
+                  horas_voo: aplicacaoSelecionada.horas_voo,
+                  tipo_servico: aplicacaoSelecionada.tipo_servico,
+                  produtos: aplicacaoSelecionada.produtos?.length ? aplicacaoSelecionada.produtos : legacyProduct(aplicacaoSelecionada),
+                }} />
+                <h4 className="border-t border-gray-100 pt-4 text-sm font-semibold text-slate-900">Editar dados gerais</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-slate-700 mb-1">Data</label>
@@ -516,7 +575,8 @@ export default function RelatoriosPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-wrap gap-3 pt-4">
+                  <button onClick={handleExcluir} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 font-semibold text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" />Excluir</button>
                   <button
                     onClick={() => setModalAberto(false)}
                     className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-slate-700 font-semibold hover:bg-gray-50"
@@ -526,8 +586,9 @@ export default function RelatoriosPage() {
                   <button
                     onClick={handleSalvarEdicao}
                     disabled={salvando}
-                    className="flex-1 px-4 py-3 rounded-xl bg-pulvion-green text-white font-semibold hover:bg-green-500 disabled:opacity-50"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-pulvion-green px-4 py-3 font-semibold text-white hover:bg-green-500 disabled:opacity-50"
                   >
+                    <Save className="h-4 w-4" />
                     {salvando ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>

@@ -1,6 +1,6 @@
 # Design system atual do PulviOn Admin
 
-**Atualizado em:** 11 de junho de 2026
+**Atualizado em:** 12 de junho de 2026
 
 ## Identidade base
 
@@ -17,7 +17,10 @@ A fonte global é Inter, carregada por `next/font/google`.
 
 ## Estado real dos estilos
 
-O painel usa Tailwind CSS diretamente. Não existe biblioteca interna formal de componentes nem shadcn/ui. Há mistura entre os tokens do Tailwind e cores hexadecimais escritas diretamente nos componentes.
+O painel usa Tailwind CSS diretamente e possui componentes compartilhados para
+tabelas, modais, paginação, apresentação de aplicações e badges. Não utiliza
+shadcn/ui. Ainda há mistura entre tokens do Tailwind e cores hexadecimais escritas
+diretamente nos componentes.
 
 Padrões predominantes:
 
@@ -32,15 +35,16 @@ Padrões predominantes:
 ### Dashboard
 
 - Sidebar fixa no desktop e drawer no mobile.
-- Header simples com “Dashboard Operacional” e data.
+- Header contextual com saudação, data, título e descrição da rota atual.
 - Conteúdo com quatro KPIs.
 - Área principal em proporção aproximada 70/30: tabela e widget climático.
 
 ### Cadastros
 
 - Abas horizontais para fazendas, drones, pilotos e aplicações.
-- Fazendas usam lista à esquerda e detalhes/formulário à direita.
-- Outros cadastros seguem variações de lista e painel de edição.
+- Todas as abas usam tabela no desktop e cards compactos no mobile.
+- Detalhes e formulários são exibidos em modais responsivos.
+- Busca e paginação local seguem o mesmo padrão entre as abas.
 
 ### Relatórios
 
@@ -67,7 +71,7 @@ Parte das páginas implementa cards, tabelas e modais localmente, portanto ainda
 - Sidebar possui comportamento móvel e recolhimento automático abaixo de 1200 px.
 - Grids usam breakpoints Tailwind.
 - Tabelas usam rolagem horizontal.
-- O painel é utilizável em telas menores, mas formulários densos são orientados a desktop.
+- Modais longos usam scroll vertical e tabelas densas usam scroll horizontal.
 
 ## Acessibilidade e UX conhecidas
 
@@ -84,3 +88,38 @@ Parte das páginas implementa cards, tabelas e modais localmente, portanto ainda
 3. Padronizar loading, erro, sucesso e confirmação.
 4. Corrigir textos com codificação incorreta.
 5. Garantir foco, teclado e atributos ARIA em modais e menus.
+
+## Catálogo de ícones e estados
+
+Todos os ícones devem usar `lucide-react`, com tamanho padrão de `16px` em ações e `20px` em navegação ou títulos. Não usar emojis.
+
+| Contexto | Ícone | Cor/estado recomendado |
+|---|---|---|
+| Dashboard | `LayoutDashboard` | Branco na aba ativa; neutro nas demais |
+| Cadastros | `Database` | Branco na aba ativa; neutro nas demais |
+| Relatórios | `BarChart3` | Branco na aba ativa; neutro nas demais |
+| Fazenda | `Warehouse` | Teal sobre fundo teal claro |
+| Contato | `Contact`, `Phone`, `AtSign` | Teal |
+| Piloto | `UserRound` | Teal |
+| Drone | `Drone` | Teal |
+| Cultura | `Sprout` | Teal |
+| Produtos | `Package` | Teal |
+| Herbicida | `Leaf` | Teal |
+| Fertilizante | `Sprout` | Teal |
+| Adjuvante | `Droplets` | Teal |
+| Fungicida/inseticida | `FlaskConical` | Teal |
+| Serviço | `Wrench`, `Factory` | Teal |
+| Adicionar | `Plus` | Branco em botão verde |
+| Visualizar | `Eye` | Teal, fundo suave no hover |
+| Editar | `Pencil` | Teal, fundo suave no hover |
+| Excluir | `Trash2` | Vermelho, fundo vermelho claro no hover |
+| Salvar | `Save` | Branco em botão verde |
+| Pesquisar | `Search` | Cinza neutro |
+| Fechar | `X` | Cinza neutro |
+| Exportar | `Download` | Teal, reservado para ações funcionais |
+| Imprimir | `Printer` | Teal, reservado para ações funcionais |
+| Sucesso/ativo | `CircleCheck` | Verde com fundo verde claro |
+| Atenção/manutenção | `CircleAlert` | Âmbar com fundo âmbar claro |
+| Erro/inativo crítico | `CircleX` | Vermelho com fundo vermelho claro |
+
+Badges compartilhadas usam os tons `success`, `warning`, `danger`, `info` e `neutral`. Tabelas densas usam linhas alternadas discretas e hover verde suave. Ações reservadas, como exportar e imprimir, só devem aparecer quando tiverem comportamento implementado.

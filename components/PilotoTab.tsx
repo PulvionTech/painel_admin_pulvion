@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { formatPhoneNumber, unformatPhoneNumber } from '@/lib/utils';
 import CadastroTable, { StatusBadge } from './CadastroTable';
 import CadastroModal, { DetailGrid, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './CadastroModal';
+import { Badge } from './VisualTokens';
 
 const ENTERPRISE_ID = '00000000-0000-0000-0000-000000000001';
 interface Piloto { id?: string; nome: string; email?: string; telefone?: string; licenca_caar?: string; role?: string; is_active?: boolean; invite_status?: string; }
@@ -47,7 +48,7 @@ export default function PilotoTab() {
     <CadastroTable title="Pilotos" rows={rows} onAdd={add} onRowClick={show} searchText={(r) => `${r.nome} ${r.email} ${r.telefone} ${r.licenca_caar} ${r.role}`} emptyText="Nenhum piloto cadastrado." columns={[
       { key: 'nome', label: 'Nome', render: (r) => <span className="font-semibold text-gray-900">{r.nome}</span> },
       { key: 'email', label: 'E-mail', render: (r) => r.email || '—' }, { key: 'telefone', label: 'Telefone', render: (r) => r.telefone ? formatPhoneNumber(r.telefone) : '—' },
-      { key: 'licenca', label: 'Licença CAAR', render: (r) => r.licenca_caar || '—' }, { key: 'perfil', label: 'Perfil', render: (r) => r.role || 'pilot' },
+      { key: 'licenca', label: 'Licença CAAR', render: (r) => r.licenca_caar || '—' }, { key: 'perfil', label: 'Perfil', render: (r) => <Badge label={r.role === 'admin' ? 'Administrador' : 'Piloto'} tone="info" /> },
       { key: 'status', label: 'Status', render: (r) => <StatusBadge active={r.is_active !== false} /> },
     ]} />
     <CadastroModal open={open} mode={mode} title={mode === 'add' ? 'Adicionar Piloto' : selected?.nome || 'Piloto'} onClose={close} onEdit={edit} onDelete={remove}>

@@ -6,12 +6,14 @@ import { ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { AGRICULTURAL_CATALOG, uniqueCatalogValues } from '@/lib/agriculturalCatalog';
 import CadastroTable from './CadastroTable';
-import CadastroModal, { DetailGrid, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './CadastroModal';
+import CadastroModal, { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './CadastroModal';
+import ApplicationDetailsPanel, { ApplicationProduct, legacyProduct, ProductSummary } from './ApplicationPresentation';
 
 const ENTERPRISE_ID = '00000000-0000-0000-0000-000000000001';
 interface Option { id: string; nome: string; }
+interface FazendaOption extends Option { contato?: string; }
 interface CatalogOption { type: string; label: string; }
-interface ProdutoAplicacao { id?: string; classe_produto: string; produto_nome: string; dosagem_ha: number; unidade: string; num_art: string; total_aplicado?: number; }
+interface ProdutoAplicacao extends ApplicationProduct { classe_produto: string; produto_nome: string; dosagem_ha: number; unidade: string; num_art: string; }
 interface Aplicacao { id?: string; data_aplicacao: string; user_id: string; fazenda_id: string; drone_id: string; cultura: string; area_ha: number; horas_voo: number; tipo_servico: string; classe_produto?: string; produto_nome?: string; dosagem?: number; unidade?: string; num_art?: string; produtos?: ProdutoAplicacao[]; }
 
 const defaults = (): Aplicacao => ({ data_aplicacao: new Date().toISOString().split('T')[0], user_id: '', fazenda_id: '', drone_id: '', cultura: '', area_ha: 0, horas_voo: 0, tipo_servico: '' });
@@ -22,7 +24,7 @@ const totalUnit = (unit: string) => unit.replace(/\s*\/\s*ha$/i, '') || unit;
 
 export default function AplicacaoTab() {
   const [rows, setRows] = useState<Aplicacao[]>([]);
-  const [pilotos, setPilotos] = useState<Option[]>([]); const [fazendas, setFazendas] = useState<Option[]>([]); const [drones, setDrones] = useState<Option[]>([]);
+  const [pilotos, setPilotos] = useState<Option[]>([]); const [fazendas, setFazendas] = useState<FazendaOption[]>([]); const [drones, setDrones] = useState<Option[]>([]);
   const [catalog, setCatalog] = useState<CatalogOption[]>([]);
   const [products, setProducts] = useState<ProdutoAplicacao[]>([]);
   const [selected, setSelected] = useState<Aplicacao | null>(null); const [mode, setMode] = useState<'view' | 'edit' | 'add'>('view'); const [open, setOpen] = useState(false); const [status, setStatus] = useState(''); const [saving, setSaving] = useState(false);
@@ -36,19 +38,19 @@ export default function AplicacaoTab() {
 
   const load = async () => {
     const [apps, productRows, ps, fs, ds, lists] = await Promise.all([
-      supabase.from('aplicacoes').select('*').order('data_aplicacao', { ascending: false }),
-      supabase.from('aplicacao_produtos').select('*').order('created_at'),
-      supabase.from('profiles').select('id, full_name'),
-      supabase.from('fazendas').select('id, nome'),
-      supabase.from('drones').select('id, identificador'),
-      supabase.from('auxiliary_lists').select('type, label').eq('is_active', true).order('sort_order'),
+      supabase.from('aplicacoes').select('*').eq('enterprise_id', ENTERPRISE_ID).order('data_aplicacao', { ascending: false }),
+      supabase.from('aplicacao_produtos').select('*').eq('enterprise_id', ENTERPRISE_ID).order('created_at'),
+      supabase.from('profiles').select('id, full_name').eq('enterprise_id', ENTERPRISE_ID),
+      supabase.from('fazendas').select('id, nome, contato_nome, telefone').eq('enterprise_id', ENTERPRISE_ID),
+      supabase.from('drones').select('id, identificador').eq('enterprise_id', ENTERPRISE_ID),
+      supabase.from('auxiliary_lists').select('type, label').eq('enterprise_id', ENTERPRISE_ID).eq('is_active', true).order('sort_order'),
     ]);
     if (apps.error) setStatus(apps.error.message);
     else {
       const allProducts = productRows.data || [];
       setRows((apps.data || []).map((app: Aplicacao) => ({ ...app, produtos: allProducts.filter((product: any) => product.aplicacao_id === app.id) })));
     }
-    setPilotos((ps.data || []).map((row: any) => ({ id: row.id, nome: row.full_name }))); setFazendas((fs.data || []).map((row: any) => ({ id: row.id, nome: row.nome }))); setDrones((ds.data || []).map((row: any) => ({ id: row.id, nome: row.identificador }))); setCatalog((lists.data || []) as CatalogOption[]);
+    setPilotos((ps.data || []).map((row: any) => ({ id: row.id, nome: row.full_name }))); setFazendas((fs.data || []).map((row: any) => ({ id: row.id, nome: row.nome, contato: [row.contato_nome, row.telefone].filter(Boolean).join(' · ') || '—' }))); setDrones((ds.data || []).map((row: any) => ({ id: row.id, nome: row.identificador }))); setCatalog((lists.data || []) as CatalogOption[]);
   };
   useEffect(() => { void load(); }, []);
 
@@ -81,11 +83,11 @@ export default function AplicacaoTab() {
   const summary = useMemo(() => products.reduce<Record<string, number>>((result, product) => { const unit = totalUnit(product.unidade) || 'un'; result[unit] = (result[unit] || 0) + total(product, area); return result; }, {}), [products, area]);
 
   return <>
-    <CadastroTable title="Aplicações" rows={rows} onAdd={add} onRowClick={show} searchText={(row) => `${date(row.data_aplicacao)} ${name(pilotos, row.user_id)} ${name(fazendas, row.fazenda_id)} ${name(drones, row.drone_id)} ${row.cultura} ${row.produtos?.map((product) => product.produto_nome).join(' ')}`} emptyText="Nenhuma aplicação cadastrada." columns={[
-      { key: 'data', label: 'Data', render: (row) => date(row.data_aplicacao) }, { key: 'piloto', label: 'Piloto', render: (row) => name(pilotos, row.user_id) }, { key: 'fazenda', label: 'Fazenda', render: (row) => name(fazendas, row.fazenda_id) }, { key: 'drone', label: 'Drone', render: (row) => name(drones, row.drone_id) }, { key: 'cultura', label: 'Cultura', render: (row) => row.cultura }, { key: 'area', label: 'Área (ha)', render: (row) => Number(row.area_ha).toFixed(2) }, { key: 'horas', label: 'Horas', render: (row) => row.horas_voo ?? '—' }, { key: 'produtos', label: 'Produtos', render: (row) => row.produtos?.length || (row.produto_nome ? 1 : 0) },
+    <CadastroTable title="Aplicações" rows={rows} onAdd={add} onRowClick={show} searchText={(row) => `${date(row.data_aplicacao)} ${name(fazendas, row.fazenda_id)} ${fazendas.find((item) => item.id === row.fazenda_id)?.contato} ${name(pilotos, row.user_id)} ${name(drones, row.drone_id)} ${row.cultura} ${row.tipo_servico} ${row.produtos?.map((product) => product.produto_nome).join(' ')}`} emptyText="Nenhuma aplicação cadastrada." columns={[
+      { key: 'data', label: 'Data', render: (row) => date(row.data_aplicacao) }, { key: 'fazenda', label: 'Fazenda', render: (row) => name(fazendas, row.fazenda_id) }, { key: 'contato', label: 'Contato da Fazenda', render: (row) => fazendas.find((item) => item.id === row.fazenda_id)?.contato || '—' }, { key: 'piloto', label: 'Piloto', render: (row) => name(pilotos, row.user_id) }, { key: 'drone', label: 'Drone', render: (row) => name(drones, row.drone_id) }, { key: 'cultura', label: 'Cultura', render: (row) => row.cultura }, { key: 'area', label: 'Área (ha)', render: (row) => Number(row.area_ha).toFixed(2) }, { key: 'servico', label: 'Serviço', render: (row) => row.tipo_servico || '—' }, { key: 'produtos', label: 'Produtos', render: (row) => <ProductSummary products={row.produtos?.length ? row.produtos : legacyProduct(row)} /> },
     ]} />
     <CadastroModal open={open} mode={mode} title={mode === 'add' ? 'Adicionar Aplicação' : selected ? `${selected.cultura} - ${date(selected.data_aplicacao)}` : 'Aplicação'} onClose={close} onEdit={edit} onDelete={remove}>
-      {mode === 'view' && selected ? <ApplicationDetails application={selected} pilotos={pilotos} fazendas={fazendas} drones={drones} /> : <form onSubmit={handleSubmit(save)} className="space-y-5">
+      {mode === 'view' && selected ? <ApplicationDetailsPanel data={{ data: date(selected.data_aplicacao), fazenda: name(fazendas, selected.fazenda_id), contato: fazendas.find((item) => item.id === selected.fazenda_id)?.contato || '—', piloto: name(pilotos, selected.user_id), drone: name(drones, selected.drone_id), cultura: selected.cultura, area_ha: selected.area_ha, horas_voo: selected.horas_voo, tipo_servico: selected.tipo_servico, produtos: selected.produtos?.length ? selected.produtos : legacyProduct(selected) }} /> : <form onSubmit={handleSubmit(save)} className="space-y-5">
         <section><h3 className="mb-3 text-sm font-semibold text-gray-900">Dados gerais</h3><div className="grid gap-4 sm:grid-cols-2">
           <Field label="Data"><input type="date" {...register('data_aplicacao', { required: true })} className={inputClass} /></Field><SelectField label="Piloto" name="user_id" options={pilotos} register={register} /><SelectField label="Fazenda" name="fazenda_id" options={fazendas} register={register} /><SelectField label="Drone" name="drone_id" options={drones} register={register} />
           <Field label="Cultura"><CatalogInput listId="culturas" values={options('cultura')} inputProps={register('cultura', { required: true })} /></Field><Field label="Área (ha)"><input type="number" min="0.01" step="0.01" {...register('area_ha', { required: true, min: 0.01, valueAsNumber: true })} className={inputClass} /></Field>
@@ -106,12 +108,6 @@ function ProductEditor({ products, area, classes, productNames, units, onChange,
       <Field label="Unidade *"><CatalogInput listId={`unidades-${index}`} values={units} value={product.unidade} onChange={(value) => onChange(index, 'unidade', value)} /></Field><Field label="Número ART (opcional)"><input value={product.num_art} onChange={(event) => onChange(index, 'num_art', event.target.value)} className={inputClass} /></Field><div className="flex items-end justify-between gap-3 rounded-xl bg-gray-50 p-3"><div><p className="text-xs text-gray-500">Total aplicado</p><p className="mt-1 font-semibold text-[#0F5A6B]">{total(product, area).toFixed(2)} {totalUnit(product.unidade)}</p></div><button type="button" onClick={() => onRemove(index)} aria-label="Remover produto" className="rounded-lg p-2 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button></div>
     </div></div>)}</div>
   </section>;
-}
-
-function ApplicationDetails({ application, pilotos, fazendas, drones }: { application: Aplicacao; pilotos: Option[]; fazendas: Option[]; drones: Option[] }) {
-  const name = (items: Option[], id: string) => items.find((item) => item.id === id)?.nome || '—';
-  const products = application.produtos?.length ? application.produtos : [{ classe_produto: application.classe_produto || '', produto_nome: application.produto_nome || '', dosagem_ha: application.dosagem || 0, unidade: application.unidade || '', num_art: application.num_art || '' }];
-  return <div className="space-y-5"><DetailGrid items={[{ label: 'Data', value: date(application.data_aplicacao) }, { label: 'Piloto', value: name(pilotos, application.user_id) }, { label: 'Fazenda', value: name(fazendas, application.fazenda_id) }, { label: 'Drone', value: name(drones, application.drone_id) }, { label: 'Cultura', value: application.cultura }, { label: 'Área (ha)', value: application.area_ha }, { label: 'Horas de voo', value: application.horas_voo }, { label: 'Tipo de serviço', value: application.tipo_servico }]} /><div><h3 className="mb-2 text-sm font-semibold text-gray-900">Produtos aplicados</h3><div className="overflow-x-auto rounded-xl border border-gray-200"><table className="min-w-full divide-y divide-gray-200 text-sm"><thead className="bg-gray-50"><tr>{['Classe', 'Produto', 'Dosagem/ha', 'Total', 'ART'].map((label) => <th key={label} className="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500">{label}</th>)}</tr></thead><tbody className="divide-y divide-gray-100">{products.map((product, index) => <tr key={product.id || index}><td className="px-3 py-2">{product.classe_produto}</td><td className="px-3 py-2 font-medium">{product.produto_nome}</td><td className="px-3 py-2">{Number(product.dosagem_ha).toFixed(4)} {product.unidade}</td><td className="px-3 py-2 font-semibold text-[#0F5A6B]">{total(product, application.area_ha).toFixed(2)} {totalUnit(product.unidade)}</td><td className="px-3 py-2">{product.num_art}</td></tr>)}</tbody></table></div></div></div>;
 }
 
 function CatalogInput({ listId, values, inputProps, value, onChange }: { listId: string; values: string[]; inputProps?: any; value?: string; onChange?: (value: string) => void }) { return <><input list={listId} {...inputProps} value={value} onChange={onChange ? (event) => onChange(event.target.value) : inputProps?.onChange} className={inputClass} /><datalist id={listId}>{values.map((item) => <option key={item} value={item} />)}</datalist></>; }

@@ -27,19 +27,19 @@ export default function KpiCard({
   
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-2xl p-5 shadow-sm ${className}`}
+      className={`rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-5 ${className}`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">{title}</h3>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-500 sm:mb-2 sm:text-xs">{title}</h3>
+          <p className="text-xl font-bold text-gray-900 sm:text-2xl">{value}</p>
           {delta && (
             <span className={`mt-2 text-xs font-medium ${deltaClass}`}>{delta}</span>
           )}
         </div>
         {Icon && (
-          <div className="p-3 bg-[#39B54A]/10 rounded-xl">
-            <Icon className="h-6 w-6 text-[#39B54A]" />
+          <div className="rounded-xl bg-[#39B54A]/10 p-2 sm:p-3">
+            <Icon className="h-5 w-5 text-[#39B54A] sm:h-6 sm:w-6" />
           </div>
         )}
       </div>

@@ -59,6 +59,11 @@ transacional pelo painel atual, que ainda opera sem sessão autenticada. A RPC u
 `SECURITY DEFINER`, restringe a operação ao tenant demo e valida os vínculos de
 piloto, fazenda e drone antes de gravar.
 
+A migration `20260612_enforce_demo_tenant_isolation.sql` habilita RLS e restringe
+as tabelas operacionais ao tenant demo enquanto o painel ainda não possui
+autenticação real. Essa policy garante isolamento do tenant configurado, mas não
+substitui autenticação por usuário antes da produção.
+
 ## Remoções
 
 A migration `20260611_remove_sheets_white_label.sql` remove estruturas legadas que não fazem parte do produto:
@@ -78,7 +83,10 @@ A migration `20260612_add_fazenda_details.sql` adiciona os campos usados pelo ca
 ## Divergências pendentes
 
 - O frontend ainda usa tenant fixo em novos registros.
+- Os campos legados de produto em `aplicacoes` continuam ativos por compatibilidade.
 
 ## Segurança
 
-RLS precisa ser completada e validada. O diagnóstico atual identificou dados visíveis sem sessão autenticada.
+RLS está habilitada nas tabelas operacionais com policies temporárias limitadas ao
+tenant demo. Antes da produção, essas policies precisam ser substituídas por
+regras baseadas em `auth.uid()` e no `enterprise_id` do profile autenticado.

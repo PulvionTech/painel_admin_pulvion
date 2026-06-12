@@ -18,20 +18,10 @@ export default function CadastrosPage() {
   const [activeTab, setActiveTab] = useState('fazendas');
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho da página */}
-      <div className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100">
-        <h1 className="text-xl font-semibold text-gray-900">
-          Cadastros
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Gerencie fazendas, drones, pilotos e aplicações da sua operação.
-        </p>
-      </div>
-
+    <div className="min-w-0 space-y-4 sm:space-y-6">
       {/* Abas horizontais */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -41,7 +31,7 @@ export default function CadastrosPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium
+                  flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium sm:px-6 sm:py-3
                   transition-all duration-200 whitespace-nowrap
                   ${isActive 
                     ? 'bg-[#39B54A]/10 text-[#0F5A6B] border border-[#39B54A]/20 shadow-sm' 

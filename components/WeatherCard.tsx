@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import {
   Clock,
   CloudDrizzle,
@@ -32,13 +33,17 @@ const statusStyles: Record<WeatherData['operationalStatus'], string> = {
 };
 
 export default function WeatherCard({ data }: { data: WeatherData }) {
-  const updatedAt = data.lastUpdate.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const [updatedAt, setUpdatedAt] = useState('');
+
+  useEffect(() => {
+    setUpdatedAt(data.lastUpdate.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }));
+  }, [data.lastUpdate]);
 
   return (
-    <aside className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+    <aside className="min-w-0 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr_1.2fr] lg:divide-x lg:divide-gray-100">
         <div className="lg:pr-4">
           <div className="flex items-start justify-between gap-3">
@@ -49,9 +54,9 @@ export default function WeatherCard({ data }: { data: WeatherData }) {
                 <span>{data.city}, {data.state}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-[11px] text-gray-400">
+            <div className="hidden items-center gap-1 text-[11px] text-gray-400 sm:flex">
               <Clock className="h-3 w-3" />
-              <span>{updatedAt}</span>
+              <span>{updatedAt || 'Atualizando'}</span>
             </div>
           </div>
 
@@ -83,7 +88,7 @@ export default function WeatherCard({ data }: { data: WeatherData }) {
             <WeatherMetric icon={Wind} label="Vento" value={`${data.windSpeed} km/h`} />
           </div>
           <h4 className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Próximas horas</h4>
-          <div className="mt-2 grid grid-cols-4 gap-1.5">
+          <div className="mt-2 grid grid-cols-2 gap-1.5 min-[380px]:grid-cols-4">
             {data.hourly.map((item) => (
               <div key={item.time} className="rounded-lg border border-gray-100 px-1.5 py-2 text-center">
                 <p className="text-[11px] text-gray-400">{item.time}</p>

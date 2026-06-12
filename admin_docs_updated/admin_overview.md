@@ -1,6 +1,6 @@
 # Visão geral do PulviOn Admin
 
-**Atualizado em:** 11 de junho de 2026
+**Atualizado em:** 12 de junho de 2026
 
 O PulviOn Admin é um painel web para consultar aplicações agrícolas, manter cadastros operacionais e analisar resultados. Toda inserção e atualização de informações ocorre exclusivamente no banco PostgreSQL do Supabase.
 
@@ -22,6 +22,17 @@ O menu lateral contém somente Dashboard, Cadastros e Relatórios.
 | Relatórios | Filtros, indicadores e edição de aplicações |
 | Banco | Supabase PostgreSQL acessado pelo frontend |
 
+## Estado atual da interface
+
+- Layout responsivo para desktop, tablet e celular.
+- Sidebar fixa no desktop, recolhível e transformada em drawer no mobile.
+- Header contextual por rota, com saudação, data e logout.
+- Footer compartilhado em todas as páginas administrativas.
+- Tabelas com busca, paginação local, scroll horizontal e cards compactos no mobile.
+- Modais responsivos com scroll vertical, ícones semânticos e badges de status.
+- Dashboard, Cadastros e Relatórios usam a mesma estrutura resumida de aplicações.
+- Detalhes de aplicação mostram todos os dados gerais e a lista completa de produtos.
+
 ## Documentos
 
 - `admin_prd.md`: produto atual.
@@ -36,7 +47,7 @@ O menu lateral contém somente Dashboard, Cadastros e Relatórios.
 ## Prioridades
 
 1. Proteger rotas administrativas.
-2. Corrigir RLS e bloquear acesso anônimo.
+2. Substituir as policies temporárias do tenant demo por RLS baseada em `auth.uid()`.
 3. Remover tenant fixo do frontend.
-4. Alinhar formulários e schema.
-5. Implementar convites reais de usuários.
+4. Implementar convites reais de usuários.
+5. Migrar filtros e paginação para consultas server-side.

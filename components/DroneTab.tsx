@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { supabase } from '@/lib/supabaseClient';
 import CadastroTable, { StatusBadge } from './CadastroTable';
 import CadastroModal, { DetailGrid, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './CadastroModal';
+import { Badge } from './VisualTokens';
 
 const MODELOS = ['Agras T40', 'Agras T30', 'Agras T20P', 'Agras T50', 'Agras T25P', 'Agras T100', 'P100', 'P30', 'P40', 'V40', 'HD540 Pro', 'S50'];
 const ENTERPRISE_ID = '00000000-0000-0000-0000-000000000001';
@@ -71,7 +72,7 @@ export default function DroneTab() {
           { key: 'modelo', label: 'Modelo', render: (r) => r.modelo || '—' },
           { key: 'anac', label: 'Registro ANAC', render: (r) => r.registro_anac || '—' },
           { key: 'serie', label: 'Número de série', render: (r) => r.numero_serie || '—' },
-          { key: 'status', label: 'Status', render: (r) => r.status || '—' },
+          { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'Não informado'} tone={r.status?.toLocaleLowerCase('pt-BR').includes('operação') ? 'success' : r.status?.toLocaleLowerCase('pt-BR').includes('manutenção') ? 'warning' : 'neutral'} /> },
           { key: 'ativo', label: 'Ativo', render: (r) => <StatusBadge active={r.ativo !== false} /> },
         ]}
       />

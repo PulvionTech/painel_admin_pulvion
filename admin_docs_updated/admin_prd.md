@@ -1,6 +1,6 @@
 # PRD atual do PulviOn Admin
 
-**Atualizado em:** 11 de junho de 2026
+**Atualizado em:** 12 de junho de 2026
 
 ## Proposta
 
@@ -11,21 +11,29 @@ Centralizar a gestão operacional de aplicações agrícolas em uma interface we
 ### Dashboard
 
 - KPIs de aplicações, área, horas e fazendas.
-- Tabela pesquisável de registros.
-- Modal de detalhes.
+- Tabela pesquisável e paginada de registros.
+- Modal de detalhes com dados gerais e produtos aplicados.
 - Card climático operacional.
 
 ### Cadastros
 
 - Abas de Fazendas, Drones, Pilotos e Aplicações.
-- Listagem em tabela, busca, criação, visualização, edição e exclusão.
-- Modais responsivos com scroll.
+- Listagem responsiva em tabela ou cards mobile, busca, paginação, criação, visualização, edição e exclusão.
+- Modais responsivos com scroll, ícones e badges.
+- Aplicações com múltiplos produtos, total aplicado automático e ART opcional.
 
 ### Relatórios
 
 - Indicadores operacionais.
 - Filtros por período, piloto, fazenda e drone.
-- Tabela e edição de aplicações.
+- Tabela paginada, detalhes completos, edição e exclusão de aplicações.
+
+### Layout compartilhado
+
+- Sidebar com Dashboard, Cadastros e Relatórios.
+- Header contextual com logout.
+- Footer institucional.
+- Design system com Lucide React, badges semânticas e tokens PulviOn.
 
 ### Autenticação
 
@@ -38,8 +46,7 @@ O Supabase PostgreSQL é a única fonte de dados. O painel não possui integraç
 ## Requisitos pendentes
 
 - Proteger rotas e validar role administrativa.
-- Aplicar isolamento real por empresa.
-- Completar políticas RLS.
+- Substituir isolamento temporário do tenant demo por isolamento baseado no usuário autenticado.
 - Remover tenant fixo.
-- Alinhar campos de fazendas e aplicações ao schema.
 - Criar convites reais de pilotos.
+- Aplicar paginação e filtros no banco.
