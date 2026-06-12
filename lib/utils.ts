@@ -1,15 +1,14 @@
 // Formatar telefone (xx) xxxxx-xxxx (celular) ou (xx) xxxx-xxxx (fixo)
 export function formatPhoneNumber(value: string): string {
-  const cleaned = value.replace(/\D/g, '');
-  // Para celular (11 dígitos) ou fixo (10 dígitos)
-  const match = cleaned.match(/^(\d{0,2})(\d{0,5})(\d{0,4})$/);
-  if (!match) return value;
-  
-  const [, area, number, lastDigits] = match;
-  if (!area) return '';
-  if (!number) return `(${area}`;
-  if (!lastDigits) return `(${area}) ${number}`;
-  return `(${area}) ${number}-${lastDigits}`;
+  const cleaned = value.replace(/\D/g, '').slice(0, 11);
+  if (!cleaned) return '';
+  if (cleaned.length <= 2) return `(${cleaned}`;
+
+  const area = cleaned.slice(0, 2);
+  const number = cleaned.slice(2);
+  const prefixLength = number.length > 8 ? 5 : 4;
+  if (number.length <= prefixLength) return `(${area}) ${number}`;
+  return `(${area}) ${number.slice(0, prefixLength)}-${number.slice(prefixLength)}`;
 }
 
 // Remover formatação de telefone

@@ -64,7 +64,7 @@ export default function LoginPage() {
             Cada voo registrado. Cada dado seguro.
           </h2>
           <p className="mt-6 max-w-sm text-sm text-white/80 leading-7">
-            Conecte-se ao painel de gestão para acompanhar aplicações, integração com Sheets e cadastros de fazendas, drones e pilotos.
+            Conecte-se ao painel de gestão para acompanhar aplicações e cadastros de fazendas, drones e pilotos.
           </p>
         </div>
 

@@ -1,311 +1,68 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { useForm } from 'react-hook-form';
+import { supabase } from '@/lib/supabaseClient';
 import { formatPhoneNumber, unformatPhoneNumber } from '@/lib/utils';
+import CadastroTable, { StatusBadge } from './CadastroTable';
+import CadastroModal, { DetailGrid, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from './CadastroModal';
 
-interface PilotoForm {
-  id?: string;
-  nome: string;
-  telefone?: string;
-  licenca_caar?: string;
-}
+const ENTERPRISE_ID = '00000000-0000-0000-0000-000000000001';
+interface Piloto { id?: string; nome: string; email?: string; telefone?: string; licenca_caar?: string; role?: string; is_active?: boolean; invite_status?: string; }
+const defaults: Piloto = { nome: '', email: '', telefone: '', licenca_caar: '', role: 'pilot', is_active: true };
 
 export default function PilotoTab() {
-  const [pilotos, setPilotos] = useState<PilotoForm[]>([]);
-  const [selected, setSelected] = useState<PilotoForm | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const { register, handleSubmit, reset } = useForm<PilotoForm>({
-    defaultValues: { nome: '', telefone: '', licenca_caar: '' },
-  });
-  const [status, setStatus] = useState<string | null>(null);
+  const [rows, setRows] = useState<Piloto[]>([]);
+  const [selected, setSelected] = useState<Piloto | null>(null);
+  const [mode, setMode] = useState<'view' | 'edit' | 'add'>('view');
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState('');
+  const { register, handleSubmit, reset, setValue } = useForm<Piloto>({ defaultValues: defaults });
 
-  useEffect(() => {
-    async function loadPilotos() {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, full_name, telefone, licenca_caar')
-          .order('full_name', { ascending: true });
-        if (error) throw error;
-        if (data) {
-          const mapped = (data || []).map((u) => ({
-            id: u.id,
-            nome: (u as any).full_name,
-            telefone: (u as any).telefone,
-            licenca_caar: (u as any).licenca_caar,
-          }));
-          setPilotos(mapped as any);
-        }
-      } catch (err) {
-        console.error('Erro ao carregar pilotos:', err);
-      }
-    }
-    loadPilotos();
-  }, []);
+  const load = async () => {
+    const { data, error } = await supabase.from('profiles').select('id, full_name, email, telefone, licenca_caar, role, is_active, invite_status').order('full_name');
+    if (error) setStatus(error.message);
+    else setRows((data || []).map((r: any) => ({ ...r, nome: r.full_name })));
+  };
+  useEffect(() => { void load(); }, []);
+  const show = (r: Piloto) => { setSelected(r); setMode('view'); setOpen(true); setStatus(''); };
+  const add = () => { setSelected(null); reset(defaults); setMode('add'); setOpen(true); setStatus(''); };
+  const edit = () => { if (selected) { reset({ ...selected, telefone: formatPhoneNumber(selected.telefone || '') }); setMode('edit'); } };
+  const close = () => { setOpen(false); setStatus(''); };
 
-  const TEST_ENTERPRISE_ID = '00000000-0000-0000-0000-000000000001';
-
-  const onSubmit = async (values: PilotoForm) => {
-    setStatus(null);
-    try {
-      const dataToSave = {
-        full_name: values.nome,
-        enterprise_id: TEST_ENTERPRISE_ID,
-        email: `${values.nome.toLowerCase().replace(/\s+/g, '.')}@demo.com`,
-        telefone: unformatPhoneNumber(values.telefone || ''),
-        licenca_caar: values.licenca_caar,
-        role: 'pilot',
-        modulo_pulverizacao: true,
-        modulo_mapeamento: true,
-        modulo_cotesia: false,
-        is_active: true,
-        invite_status: 'accepted',
-      };
-
-      if (selected?.id && isEditing) {
-        const { error } = await supabase
-          .from('profiles')
-          .update(dataToSave)
-          .eq('id', selected.id);
-        if (error) throw error;
-        setStatus('✓ Piloto atualizado com sucesso');
-      } else {
-        const { error } = await supabase.from('profiles').insert({ ...dataToSave, id: crypto.randomUUID() });
-        if (error) throw error;
-        setStatus('✓ Piloto cadastrado com sucesso');
-      }
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, telefone, licenca_caar')
-        .order('full_name', { ascending: true });
-      if (data) {
-        const mapped = (data || []).map((u) => ({
-          id: u.id,
-          nome: (u as any).full_name,
-          telefone: (u as any).telefone,
-          licenca_caar: (u as any).licenca_caar,
-        }));
-        setPilotos(mapped as any);
-      }
-      reset();
-      setSelected(null);
-      setIsEditing(false);
-      setIsAdding(false);
-    } catch (err) {
-      console.error(err);
-      setStatus('✗ Erro ao salvar dados');
-    }
+  const save = async (v: Piloto) => {
+    const payload = { full_name: v.nome, email: v.email || `${v.nome.toLowerCase().replace(/\s+/g, '.')}@demo.com`, telefone: unformatPhoneNumber(v.telefone || ''), licenca_caar: v.licenca_caar, role: v.role || 'pilot', is_active: v.is_active ?? true, invite_status: v.invite_status || 'accepted', enterprise_id: ENTERPRISE_ID };
+    const result = mode === 'edit' && selected?.id ? await supabase.from('profiles').update(payload).eq('id', selected.id) : await supabase.from('profiles').insert({ ...payload, id: crypto.randomUUID() });
+    if (result.error) return setStatus(result.error.message);
+    await load(); close();
+  };
+  const remove = async () => {
+    if (!selected?.id || !confirm(`Excluir o piloto "${selected.nome}"?`)) return;
+    const { error } = await supabase.from('profiles').delete().eq('id', selected.id);
+    if (error) return setStatus(error.message);
+    await load(); close();
   };
 
-  const handleSelect = (piloto: PilotoForm) => {
-    setSelected(piloto);
-    setIsEditing(false);
-    setIsAdding(false);
-    setStatus(null);
-  };
-
-  const handleStartEdit = () => {
-    if (!selected) return;
-    setIsEditing(true);
-    reset({
-      nome: selected.nome,
-      telefone: selected.telefone ? formatPhoneNumber(selected.telefone) : '',
-      licenca_caar: selected.licenca_caar,
-    });
-  };
-
-  const handleStartAdd = () => {
-    setIsAdding(true);
-    setSelected(null);
-    setIsEditing(false);
-    reset({
-      nome: '',
-      telefone: '',
-      licenca_caar: '',
-    });
-    setStatus(null);
-  };
-
-  const handleCancel = () => {
-    setSelected(null);
-    setIsEditing(false);
-    setIsAdding(false);
-    reset();
-    setStatus(null);
-  };
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[0.7fr_1.3fr] gap-6">
-      {/* Lista de Pilotos */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">
-            👤 Pilotos ({pilotos.length})
-          </h3>
-          <button
-            onClick={handleStartAdd}
-            className="bg-pulvion-green text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-500 transition flex items-center gap-2"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Novo
-          </button>
-        </div>
-        <div className="rounded-2xl bg-slate-50 p-4 max-h-[600px] overflow-y-auto border border-gray-200">
-          {pilotos.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-8">Nenhum piloto cadastrado</p>
-          ) : (
-            <ul className="space-y-2">
-              {pilotos.map((piloto) => {
-                const isSelected = selected?.id === piloto.id;
-                return (
-                  <li
-                    key={piloto.id}
-                    className={`p-3 rounded-xl cursor-pointer transition ${
-                      isSelected
-                        ? 'bg-pulvion-green/20 border border-pulvion-green'
-                        : 'bg-white border border-gray-200 hover:border-pulvion-green/50'
-                    }`}
-                    onClick={() => handleSelect(piloto)}
-                  >
-                    <p className="font-medium text-slate-900">{piloto.nome}</p>
-                    {piloto.licenca_caar && <p className="text-xs text-slate-500 font-mono">{piloto.licenca_caar}</p>}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      {/* Painel Principal (View/Edit) */}
-      <div className="rounded-2xl bg-white p-6 border border-gray-200 shadow-sm">
-        {/* View Mode */}
-        {selected && !isEditing && !isAdding && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-slate-900">{selected.nome}</h3>
-              <button
-                onClick={handleStartEdit}
-                className="bg-pulvion-green/10 text-pulvion-green px-4 py-2 rounded-xl text-sm font-semibold hover:bg-pulvion-green/20 transition flex items-center gap-2"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Editar
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Telefone</p>
-                <p className="text-sm font-medium text-slate-900">
-                  {selected.telefone ? formatPhoneNumber(selected.telefone) : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Licença CAAR</p>
-                <p className="text-sm font-medium text-slate-900">{selected.licenca_caar || '—'}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Edit/Add Form */}
-        {(isEditing || isAdding) && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-slate-900">
-                {isAdding ? 'Novo Piloto' : 'Editar Piloto'}
-              </h3>
-              <button
-                onClick={handleCancel}
-                className="text-slate-500 hover:text-slate-700 transition"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Nome do piloto *</label>
-                <input
-                  type="text"
-                  {...register('nome', { required: true })}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:border-pulvion-green focus:outline-none text-sm"
-                  placeholder="João Silva"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Telefone</label>
-                <input
-                  type="text"
-                  {...register('telefone', {
-                    onChange: (e) => {
-                      e.target.value = formatPhoneNumber(e.target.value);
-                    },
-                  })}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:border-pulvion-green focus:outline-none text-sm"
-                  placeholder="(34) 99999-9999"
-                  maxLength={15}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Licença (CAAR)</label>
-                <input
-                  type="text"
-                  {...register('licenca_caar')}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:border-pulvion-green focus:outline-none text-sm"
-                  placeholder="CAAR-XXXXXX"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="flex-1 border border-gray-300 text-slate-700 px-4 py-3 rounded-xl font-semibold hover:bg-gray-50 transition text-sm"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-pulvion-green text-white px-4 py-3 rounded-xl font-semibold hover:bg-green-500 transition text-sm"
-                >
-                  {isAdding ? 'Cadastrar' : 'Salvar'}
-                </button>
-              </div>
-              {status && (
-                <p className={`text-sm font-medium ${status.includes('✓') ? 'text-green-600' : 'text-red-600'}`}>
-                  {status}
-                </p>
-              )}
-            </form>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!selected && !isAdding && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">👤</div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Selecione um piloto</h3>
-            <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
-              Escolha um piloto da lista para ver os detalhes ou clique em "Novo" para adicionar um novo.
-            </p>
-            <button
-              onClick={handleStartAdd}
-              className="bg-pulvion-green text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-green-500 transition"
-            >
-              Adicionar Piloto
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <>
+    <CadastroTable title="Pilotos" rows={rows} onAdd={add} onRowClick={show} searchText={(r) => `${r.nome} ${r.email} ${r.telefone} ${r.licenca_caar} ${r.role}`} emptyText="Nenhum piloto cadastrado." columns={[
+      { key: 'nome', label: 'Nome', render: (r) => <span className="font-semibold text-gray-900">{r.nome}</span> },
+      { key: 'email', label: 'E-mail', render: (r) => r.email || '—' }, { key: 'telefone', label: 'Telefone', render: (r) => r.telefone ? formatPhoneNumber(r.telefone) : '—' },
+      { key: 'licenca', label: 'Licença CAAR', render: (r) => r.licenca_caar || '—' }, { key: 'perfil', label: 'Perfil', render: (r) => r.role || 'pilot' },
+      { key: 'status', label: 'Status', render: (r) => <StatusBadge active={r.is_active !== false} /> },
+    ]} />
+    <CadastroModal open={open} mode={mode} title={mode === 'add' ? 'Adicionar Piloto' : selected?.nome || 'Piloto'} onClose={close} onEdit={edit} onDelete={remove}>
+      {mode === 'view' && selected ? <DetailGrid items={[
+        { label: 'Nome', value: selected.nome }, { label: 'E-mail', value: selected.email }, { label: 'Telefone', value: selected.telefone ? formatPhoneNumber(selected.telefone) : '—' },
+        { label: 'Licença CAAR', value: selected.licenca_caar }, { label: 'Perfil', value: selected.role }, { label: 'Convite', value: selected.invite_status }, { label: 'Ativo', value: selected.is_active !== false ? 'Sim' : 'Não' },
+      ]} /> : <form onSubmit={handleSubmit(save)} className="space-y-4">
+        <Field label="Nome"><input {...register('nome', { required: true })} className={inputClass} /></Field>
+        <Field label="E-mail"><input type="email" {...register('email')} className={inputClass} /></Field>
+        <div className="grid gap-4 sm:grid-cols-2"><Field label="Telefone"><input inputMode="tel" maxLength={15} {...register('telefone', { onChange: (event) => setValue('telefone', formatPhoneNumber(event.target.value)) })} className={inputClass} /></Field><Field label="Licença CAAR"><input {...register('licenca_caar')} className={inputClass} /></Field></div>
+        <Field label="Perfil"><select {...register('role')} className={inputClass}><option value="pilot">Piloto</option><option value="admin">Administrador</option></select></Field>
+        <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" {...register('is_active')} /> Usuário ativo</label>
+        {status && <p className="text-sm text-red-600">{status}</p>}<div className="flex justify-end gap-2"><button type="button" onClick={close} className={secondaryButtonClass}>Cancelar</button><button className={primaryButtonClass}>Salvar</button></div>
+      </form>}
+    </CadastroModal>
+  </>;
 }
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div><label className={labelClass}>{label}</label>{children}</div>; }

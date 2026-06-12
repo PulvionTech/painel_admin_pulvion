@@ -41,7 +41,7 @@ export default function RecordsTable({
   return (
     <div className="space-y-4">
       {/* Search */}
-      <div className="relative">
+      <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
@@ -66,12 +66,6 @@ export default function RecordsTable({
                   {col.label}
                 </th>
               ))}
-              <th
-                scope="col"
-                className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-              >
-                Status
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
@@ -86,12 +80,6 @@ export default function RecordsTable({
                     {String(record[col.key] ?? '')}
                   </td>
                 ))}
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-600"></span>
-                    Concluída
-                  </span>
-                </td>
               </tr>
             ))}
           </tbody>

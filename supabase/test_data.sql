@@ -8,22 +8,17 @@ ALTER TABLE fazendas           DISABLE ROW LEVEL SECURITY;
 ALTER TABLE drones             DISABLE ROW LEVEL SECURITY;
 ALTER TABLE aplicacoes         DISABLE ROW LEVEL SECURITY;
 ALTER TABLE auxiliary_lists    DISABLE ROW LEVEL SECURITY;
-ALTER TABLE sheets_config      DISABLE ROW LEVEL SECURITY;
-ALTER TABLE sheets_sync_logs   DISABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs         DISABLE ROW LEVEL SECURITY;
 
 -- 2. Remover temporariamente a restrição de chave estrangeira (se existir)
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
 
 -- 3. Inserir uma empresa de teste
-INSERT INTO enterprises (id, name, slug, primary_color, secondary_color, show_powered_by, is_active, plan)
+INSERT INTO enterprises (id, name, slug, is_active, plan)
 VALUES (
   '00000000-0000-0000-0000-000000000001',
   'Pulvion Demo',
   'pulvion-demo',
-  '#5EC680',
-  '#0E5162',
-  true,
   true,
   'pro'
 )

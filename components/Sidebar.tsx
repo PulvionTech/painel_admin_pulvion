@@ -3,21 +3,16 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   BarChart3,
   Database,
-  FileSpreadsheet,
-  Palette,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   Menu,
   X,
-  User,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
 
 // Navigation items organized by categories
 const categories = [
@@ -34,23 +29,10 @@ const categories = [
       { label: 'Relatórios', href: '/dashboard/relatorios', icon: BarChart3 },
     ],
   },
-  {
-    label: 'Integrações',
-    items: [
-      { label: 'Sheets', href: '/dashboard/integracao', icon: FileSpreadsheet },
-    ],
-  },
-  {
-    label: 'Configuração',
-    items: [
-      { label: 'White Label', href: '/dashboard/white-label', icon: Palette },
-    ],
-  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -63,15 +45,6 @@ export default function Sidebar() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      router.push('/login');
-    } catch (err) {
-      console.error('Erro ao fazer logout:', err);
-    }
-  };
 
   return (
     <>
@@ -191,43 +164,6 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* User section */}
-        <div className="border-t border-white/10 p-3">
-          {sidebarCollapsed ? (
-            <button
-              onClick={handleLogout}
-              className="group relative flex items-center justify-center w-full p-2.5 rounded-xl hover:bg-white/5 transition-all duration-200"
-            >
-              <LogOut className="h-5 w-5 text-white/60 group-hover:text-white" />
-              <div className="absolute left-20 top-1/2 -translate-y-1/2 bg-[#0F5A6B] text-white text-xs px-3 py-1.5 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-50 border border-white/10">
-                Sair do sistema
-              </div>
-            </button>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 px-3 py-3">
-                <div className="w-9 h-9 rounded-xl bg-[#39B54A]/20 flex items-center justify-center">
-                  <User className="h-5 w-5 text-white/70" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
-                    Usuário
-                  </p>
-                  <p className="text-xs text-white/50 truncate">
-                    Administrador
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:bg-white/5 hover:text-white transition-all duration-200"
-              >
-                <LogOut className="h-5 w-5" />
-                Sair do sistema
-              </button>
-            </div>
-          )}
-        </div>
       </aside>
     </>
   );

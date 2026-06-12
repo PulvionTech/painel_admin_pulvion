@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { DocumentIcon } from '@/components/Icons';
 
 interface Piloto {
   id: string;
@@ -36,64 +35,9 @@ interface Aplicacao {
   num_art: string;
 }
 
-// Helper functions for export
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   return date.toLocaleDateString('pt-BR');
-};
-
-const downloadCSV = (data: Aplicacao[], pilotos: Piloto[], fazendas: Fazenda[], drones: Drone[]) => {
-  const headers = [
-    'Data',
-    'Piloto',
-    'Fazenda',
-    'Drone',
-    'Cultura',
-    'Área (ha)',
-    'Horas de Voo',
-    'Tipo de Serviço',
-    'Classe do Produto',
-    'Produto',
-    'Dosagem',
-    'Unidade',
-    'Nº ART'
-  ];
-  
-  const rows = data.map(app => {
-    const piloto = pilotos.find(p => p.id === app.user_id);
-    const fazenda = fazendas.find(f => f.id === app.fazenda_id);
-    const drone = drones.find(d => d.id === app.drone_id);
-    
-    return [
-      formatDate(app.data_aplicacao),
-      piloto?.full_name || '',
-      fazenda?.nome || '',
-      drone?.identificador || '',
-      app.cultura,
-      app.area_ha,
-      app.horas_voo,
-      app.tipo_servico,
-      app.classe_produto,
-      app.produto_nome,
-      app.dosagem,
-      app.unidade,
-      app.num_art
-    ];
-  });
-  
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-  ].join('\n');
-  
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `relatorio_aplicacoes_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 };
 
 export default function RelatoriosPage() {
@@ -229,26 +173,19 @@ export default function RelatoriosPage() {
   return (
     <div className="space-y-8">
       <div className="rounded-3xl bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-pulvion-green font-semibold">
               Relatórios
             </p>
             <h1 className="mt-3 text-3xl font-semibold text-slate-900">
-              Análises e exportações
+              Análises operacionais
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-slate-500">
-              Acompanhe o desempenho das aplicações, exporte dados e identifique
+              Acompanhe o desempenho das aplicações e identifique
               padrões operacionais com visualizações rápidas e objetivas.
             </p>
           </div>
-          <button
-            onClick={() => downloadCSV(filtradas, pilotos, fazendas, drones)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-pulvion-green px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-500"
-          >
-            <DocumentIcon />
-            Exportar CSV
-          </button>
         </div>
       </div>
 

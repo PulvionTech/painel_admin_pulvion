@@ -1,139 +1,68 @@
-# Documento Funcional — Monitoramento de Registros por Fazenda e por Piloto
+# Monitoramento por fazenda e piloto
 
-## 1. Objetivo
-Criar um módulo administrativo que permita ao gestor acompanhar a operação de forma simples e confiável, com leitura rápida do desempenho por fazenda e por piloto.
+**Atualizado em:** 11 de junho de 2026
 
----
+## Monitoramento disponível hoje
 
-## 2. Visão do módulo
-O módulo deve transformar os registros brutos em visão gerencial, permitindo responder perguntas como:
-- Qual fazenda teve mais atividade no período?
-- Qual piloto lançou mais registros?
-- Quem aplicou mais hectares?
-- Onde houve falha de sincronização?
-- Quais fazendas ou pilotos estão sem movimentação?
+### Fazenda
 
----
+A aba de fazendas carrega todas as fazendas e aplicações no navegador. Ao selecionar uma fazenda, calcula:
 
-## 3. Monitoramento por fazenda
-### Indicadores principais
-- total de registros;
-- área total aplicada;
-- horas totais de voo;
-- quantidade de pilotos atuantes;
-- quantidade de drones utilizados;
-- culturas registradas;
-- produtos mais usados.
+- total de aplicações;
+- área aplicada;
+- última aplicação;
+- quantidade de drones vinculados;
+- quantidade de pilotos vinculados;
+- últimas cinco aplicações.
 
-### Visualizações sugeridas
-- cards de resumo;
-- tabela com ranking de fazendas;
-- gráfico por área aplicada;
-- linha do tempo por dia/semana/mês;
-- detalhe expandido da fazenda.
+Também permite buscar fazendas por nome, cidade, estado, contato e telefone.
 
-### Filtros
-- período;
-- unidade/empresa;
-- cultura;
-- piloto;
-- drone;
-- status de sincronização.
+### Piloto
 
----
+A aba de pilotos atualmente é um cadastro simples. Exibe nome, telefone e licença CAAR, com criação e edição.
 
-## 4. Monitoramento por piloto
-### Indicadores principais
-- número total de registros;
-- área aplicada acumulada;
-- horas de voo acumuladas;
-- média de hectares por registro;
-- fazendas atendidas;
-- drone mais utilizado;
-- registros com erro ou pendência.
+Não existem KPIs, ranking, histórico individual ou filtros de desempenho por piloto.
 
-### Visualizações sugeridas
-- ranking de pilotos;
-- gráfico comparativo de área aplicada;
-- tabela detalhada;
-- histórico por período;
-- visão individual do piloto.
+### Relatórios
 
-### Filtros
-- período;
-- fazenda;
-- drone;
-- cultura;
-- tipo de serviço;
-- status de sincronização.
+A rota de relatórios permite filtrar aplicações por período, piloto, fazenda e drone. Os totais filtrados são calculados no navegador.
 
----
+## Limitações atuais
 
-## 5. Regras de negócio
-- Todo indicador deve considerar apenas registros da empresa autenticada.
-- Registros excluídos ou inválidos não entram nos totais oficiais.
-- O agrupamento deve usar IDs relacionais, não apenas nomes textuais.
-- Alterações retroativas devem refletir automaticamente nos indicadores.
+- Consultas carregam conjuntos completos de dados sem paginação.
+- Agregações são feitas no cliente.
+- Não há filtro por cultura ou serviço.
+- Não há visão comparativa entre fazendas ou pilotos.
+- Não há detecção de inatividade.
+- Não há consultas agregadas ou views analíticas na migration atual.
+- O isolamento depende do estado remoto das políticas RLS.
 
----
+## Evolução recomendada
 
-## 6. Estrutura de dados mínima para o módulo
-Campos essenciais:
-- `aplicacoes.id`
-- `aplicacoes.enterprise_id`
-- `aplicacoes.user_id`
-- `aplicacoes.fazenda_id`
-- `aplicacoes.drone_id`
-- `aplicacoes.data_aplicacao`
-- `aplicacoes.area_ha`
-- `aplicacoes.horas_voo`
-- `aplicacoes.tipo_servico`
-- `aplicacoes.produto_nome`
-- `aplicacoes.created_at`
-- `aplicacoes.updated_at`
-- `users.nome`
-- `fazendas.nome`
-- `fazendas.contato_nome`   # Nome do contato/cliente da fazenda (opcional)
-- `fazendas.telefone`       # Telefone de contato no formato (xx) xxxxx‑xxxx (opcional)
-- `drones.identificador`
+### Por fazenda
 
----
+- Ranking por hectares e aplicações.
+- Período configurável.
+- Horas totais, rendimento e culturas.
+- Alertas de fazenda sem atividade.
+- Paginação do histórico.
 
-## 7. Layout sugerido do painel
-### Aba 1 — Visão Geral
-- cards com totais;
-- gráfico por período;
-- alertas de pendências.
+### Por piloto
 
-### Aba 2 — Por Fazenda
-- ranking de fazendas;
-- filtro lateral;
-- tabela com métricas;
-- botão para ver detalhe.
+- Total de aplicações, hectares e horas.
+- Fazendas atendidas e drones utilizados.
+- Rendimento médio.
+- Registros pendentes ou com erro.
+- Última atividade.
 
-### Aba 3 — Por Piloto
-- ranking de pilotos;
-- comparativo de performance;
-- detalhamento individual.
+### Implementação
 
-### Aba 4 — Registros
-- tabela bruta com busca e filtros;
-- ação de exportar;
-- ação de reprocessar sincronização.
+Criar consultas agregadas no banco ou RPCs protegidas por RLS. Evitar carregar todas as aplicações para calcular indicadores no navegador.
 
----
+## Critérios de confiabilidade
 
-## 8. Alertas úteis
-- fazendas sem movimentação no período;
-- piloto sem registro recente;
-- registros pendentes de sincronização;
-- divergência entre Supabase e Sheets;
-- aumento abrupto ou queda de atividade.
-
----
-
-## 9. Critérios de sucesso
-- o gestor consegue localizar registros rapidamente;
-- o acompanhamento por fazenda e por piloto reduz conferência manual;
-- os números do painel batem com Supabase e planilha;
-- o módulo ajuda na tomada de decisão diária.
+- Todo indicador deve respeitar `enterprise_id`.
+- Filtros devem ser aplicados no banco.
+- Totais devem excluir registros inválidos conforme regra explícita.
+- Alterações retroativas devem refletir nos indicadores.
+- Resultados devem ser comparados com consultas diretas no Supabase.

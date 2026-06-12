@@ -8,13 +8,6 @@ CREATE TABLE IF NOT EXISTS enterprises (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name              TEXT NOT NULL,
   slug              TEXT UNIQUE,
-  logo_url          TEXT,
-  primary_color     TEXT DEFAULT '#5EC680',
-  secondary_color   TEXT DEFAULT '#0E5162',
-  tagline           TEXT,
-  show_powered_by   BOOLEAN DEFAULT TRUE,
-  google_sheet_id   TEXT,
-  sheet_tab_name    TEXT DEFAULT 'Registros',
   is_active         BOOLEAN DEFAULT TRUE,
   plan              TEXT DEFAULT 'base' CHECK (plan IN ('base','pro')),
   created_at        TIMESTAMPTZ DEFAULT NOW(),
@@ -49,6 +42,8 @@ CREATE TABLE IF NOT EXISTS fazendas (
   cidade        TEXT,
   contato_nome  TEXT,
   telefone      TEXT,
+  area_total    NUMERIC(12,2),
+  observacoes   TEXT,
   ativo         BOOLEAN DEFAULT TRUE,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   updated_at    TIMESTAMPTZ DEFAULT NOW()
@@ -100,47 +95,27 @@ CREATE TABLE IF NOT EXISTS aplicacoes (
   edited_by       UUID REFERENCES profiles(id),
   edited_at       TIMESTAMPTZ,
   edit_reason     TEXT,
-  sync_status     TEXT NOT NULL DEFAULT 'synced' CHECK (sync_status IN ('synced','pending','error')),
-  sheets_status   TEXT NOT NULL DEFAULT 'pending' CHECK (sheets_status IN ('pending','synced','error','skipped')),
-  sheets_row      INT,
   watermelon_id   TEXT UNIQUE,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7) sheets_config (painel usa upsert id:1)
-CREATE TABLE IF NOT EXISTS sheets_config (
-  id             INT PRIMARY KEY DEFAULT 1,
-  google_sheet_id TEXT,
-  header_row      INT DEFAULT 1,
-  data_start_row  INT DEFAULT 2,
+-- 7) aplicacao_produtos
+CREATE TABLE IF NOT EXISTS aplicacao_produtos (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  enterprise_id   UUID NOT NULL REFERENCES enterprises(id),
+  aplicacao_id    UUID NOT NULL REFERENCES aplicacoes(id) ON DELETE CASCADE,
+  classe_produto  TEXT NOT NULL,
+  produto_nome    TEXT NOT NULL,
+  dosagem_ha      NUMERIC(10,4) NOT NULL CHECK (dosagem_ha > 0),
+  unidade         TEXT NOT NULL,
+  total_aplicado  NUMERIC(14,4) NOT NULL CHECK (total_aplicado >= 0),
+  num_art         TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8) white_label_config (painel usa upsert id:1)
-CREATE TABLE IF NOT EXISTS white_label_config (
-  id              INT PRIMARY KEY DEFAULT 1,
-  primary_color   TEXT DEFAULT '#5EC680',
-  secondary_color TEXT DEFAULT '#0E5162',
-  logo_url        TEXT,
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 9) sheets_sync_logs
-CREATE TABLE IF NOT EXISTS sheets_sync_logs (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  enterprise_id UUID NOT NULL REFERENCES enterprises(id),
-  aplicacao_id  UUID REFERENCES aplicacoes(id) ON DELETE SET NULL,
-  piloto_nome   TEXT,
-  fazenda_nome  TEXT,
-  area_ha       NUMERIC(10,4),
-  status        TEXT NOT NULL CHECK (status IN ('success','error','retry','skipped')),
-  error_message TEXT,
-  attempt_count INT DEFAULT 1,
-  executed_at   TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 10) audit_logs
+-- 8) audit_logs
 CREATE TABLE IF NOT EXISTS audit_logs (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   enterprise_id UUID NOT NULL REFERENCES enterprises(id),
@@ -193,12 +168,6 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_aplic_cultura') THEN
     CREATE INDEX idx_aplic_cultura ON aplicacoes(cultura);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_sheets_logs_enterprise') THEN
-    CREATE INDEX idx_sheets_logs_enterprise ON sheets_sync_logs(enterprise_id, executed_at DESC);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_sheets_logs_error') THEN
-    CREATE INDEX idx_sheets_logs_error ON sheets_sync_logs(enterprise_id, status) WHERE status = 'error';
-  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_audit_enterprise') THEN
     CREATE INDEX idx_audit_enterprise ON audit_logs(enterprise_id, created_at DESC);
   END IF;
@@ -214,8 +183,6 @@ ALTER TABLE fazendas           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drones             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aplicacoes         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auxiliary_lists    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sheets_config      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sheets_sync_logs   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs         ENABLE ROW LEVEL SECURITY;
 
 -- Helper functions for RLS

@@ -1,21 +1,17 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import KpiCard from '@/components/KpiCard';
 import RecordsTable from '@/components/RecordsTable';
+import WeatherCard, { WeatherData } from '@/components/WeatherCard';
 import { supabase } from '@/lib/supabaseClient';
 import {
   ClipboardList,
   LandPlot,
   Clock,
   Warehouse,
-  Sun,
-  Droplets,
-  Wind,
-  CloudRain,
   X,
   Pencil,
-  MapPin,
 } from 'lucide-react';
 
 interface Piloto {
@@ -55,23 +51,38 @@ interface Aplicacao {
 }
 
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
+  const date = new Date(dateString.includes('T') ? dateString : `${dateString}T00:00:00`);
   return date.toLocaleDateString('pt-BR');
 };
 
-const formatTime = (date: Date) => {
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-};
+const parseApplicationDate = (dateString: string) =>
+  new Date(dateString.includes('T') ? dateString : `${dateString}T00:00:00`);
 
-// Mock data for climate
-const climateData = {
+// Mock temporário preparado para substituição por dados da API Open-Meteo.
+const climateData: WeatherData = {
   city: 'Uberaba',
   state: 'MG',
-  temp: 22,
-  humidity: 71,
-  windSpeed: 8,
-  rainChance: 10,
+  temperature: 22,
+  condition: 'Chuva leve',
+  rainChance: 55,
+  humidity: 65,
+  windSpeed: 6,
+  operationalStatus: 'Atenção',
+  operationalMessage: 'Atenção à chuva leve',
   lastUpdate: new Date(),
+  hourly: [
+    { time: '14h', temperature: 22 },
+    { time: '17h', temperature: 23 },
+    { time: '20h', temperature: 20 },
+    { time: '23h', temperature: 19 },
+  ],
+  daily: [
+    { day: 'Qui', high: 23, low: 17 },
+    { day: 'Sex', high: 21, low: 17 },
+    { day: 'Sáb', high: 24, low: 17 },
+    { day: 'Dom', high: 24, low: 17 },
+    { day: 'Seg', high: 24, low: 17 },
+  ],
 };
 
 const periodOptions = [
@@ -83,12 +94,6 @@ const periodOptions = [
 ];
 
 export default function DashboardPage() {
-  const [metrics, setMetrics] = useState({
-    totalApplications: 0,
-    totalArea: 0,
-    totalHours: 0,
-    totalFarms: 0,
-  });
   const [aplicacoes, setAplicacoes] = useState<Aplicacao[]>([]);
   const [pilotos, setPilotos] = useState<Piloto[]>([]);
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
@@ -96,6 +101,7 @@ export default function DashboardPage() {
   const [selectedRecord, setSelectedRecord] = useState<Aplicacao | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('30days');
 
   useEffect(() => {
@@ -125,25 +131,6 @@ export default function DashboardPage() {
         setFazendas(farmsData || []);
         setDrones(dronesData || []);
 
-        // Calculate KPIs
-        const totalArea = (appsData || []).reduce(
-          (sum, row) => sum + (Number(row.area_ha) || 0),
-          0
-        );
-        const totalHours = (appsData || []).reduce(
-          (sum, row) => sum + (Number(row.horas_voo) || 0),
-          0
-        );
-        const { count: farmsCount } = await supabase
-          .from('fazendas')
-          .select('*', { count: 'exact', head: true });
-
-        setMetrics({
-          totalApplications: appsData?.length || 0,
-          totalArea: totalArea || 0,
-          totalHours: totalHours || 0,
-          totalFarms: farmsCount || 0,
-        });
       } catch (err) {
         console.error('Erro ao carregar dados:', err);
       } finally {
@@ -153,8 +140,28 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
-  // Prepare records for table
-  const records = aplicacoes.map(aplicacao => {
+  const filteredAplicacoes = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now);
+
+    if (selectedPeriod === 'today') start.setHours(0, 0, 0, 0);
+    if (selectedPeriod === '7days') start.setDate(now.getDate() - 7);
+    if (selectedPeriod === '30days') start.setDate(now.getDate() - 30);
+    if (selectedPeriod === '90days') start.setDate(now.getDate() - 90);
+    if (selectedPeriod === 'year') start.setMonth(0, 1);
+    if (selectedPeriod === 'year') start.setHours(0, 0, 0, 0);
+
+    return aplicacoes.filter((aplicacao) => parseApplicationDate(aplicacao.data_aplicacao) >= start);
+  }, [aplicacoes, selectedPeriod]);
+
+  const metrics = useMemo(() => ({
+    totalApplications: filteredAplicacoes.length,
+    totalArea: filteredAplicacoes.reduce((sum, row) => sum + (Number(row.area_ha) || 0), 0),
+    totalHours: filteredAplicacoes.reduce((sum, row) => sum + (Number(row.horas_voo) || 0), 0),
+    totalFarms: new Set(filteredAplicacoes.map((row) => row.fazenda_id)).size,
+  }), [filteredAplicacoes]);
+
+  const records = filteredAplicacoes.map(aplicacao => {
     const piloto = pilotos.find(p => p.id === aplicacao.user_id);
     const fazenda = fazendas.find(f => f.id === aplicacao.fazenda_id);
     const drone = drones.find(d => d.id === aplicacao.drone_id);
@@ -168,9 +175,44 @@ export default function DashboardPage() {
     };
   });
 
-  const handleSaveEdit = () => {
+  const updateSelectedRecord = (field: keyof Aplicacao, value: string | number) => {
+    setSelectedRecord((current) => current ? { ...current, [field]: value } : current);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedRecord) return;
+    setSaveError('');
+    setLoading(true);
+    const payload = {
+      data_aplicacao: selectedRecord.data_aplicacao,
+      user_id: selectedRecord.user_id,
+      fazenda_id: selectedRecord.fazenda_id,
+      drone_id: selectedRecord.drone_id,
+      cultura: selectedRecord.cultura,
+      area_ha: selectedRecord.area_ha,
+      horas_voo: selectedRecord.horas_voo,
+      tipo_servico: selectedRecord.tipo_servico,
+      classe_produto: selectedRecord.classe_produto,
+      produto_nome: selectedRecord.produto_nome,
+      dosagem: selectedRecord.dosagem,
+      unidade: selectedRecord.unidade,
+      num_art: selectedRecord.num_art,
+    };
+    const { data, error } = await supabase
+      .from('aplicacoes')
+      .update(payload)
+      .eq('id', selectedRecord.id)
+      .select()
+      .single();
+    setLoading(false);
+    if (error) {
+      console.error('Erro ao atualizar aplicação:', error);
+      setSaveError(error.message);
+      return;
+    }
+    setAplicacoes((current) => current.map((item) => item.id === data.id ? data as Aplicacao : item));
+    setSelectedRecord(data as Aplicacao);
     setIsEditing(false);
-    setSelectedRecord(null);
   };
 
   return (
@@ -223,19 +265,16 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main layout */}
-      <div className="flex flex-col lg:flex-row gap-5">
-        {/* Left: Main area for records (70% width) */}
-        <div className="flex-1 lg:w-[70%]">
-          {/* Main Records Table */}
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <WeatherCard data={climateData} />
+
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Registros de Aplicação
+                  Últimos Registros de Aplicação
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Total: {records.length}
+                  Visualização operacional dos {records.length} registros mais recentes.
                 </p>
               </div>
             </div>
@@ -254,80 +293,15 @@ export default function DashboardPage() {
                     { key: 'fazenda', label: 'Fazenda' },
                     { key: 'cultura', label: 'Cultura' },
                     { key: 'area_ha', label: 'Área (ha)' },
+                    { key: 'horas_voo', label: 'Horas' },
+                    { key: 'tipo_servico', label: 'Serviço' },
                     { key: 'produto', label: 'Produto' },
                     { key: 'drone', label: 'Drone' },
                   ]}
                 />
               )}
             </div>
-          </section>
-        </div>
-
-        {/* Right: Side widgets (30% width) */}
-        <div className="w-full lg:w-[30%]">
-          {/* Climate Widget */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Condições Climáticas
-              </h3>
-              <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                <Clock className="h-3 w-3" />
-                <span>Atualizado às {formatTime(climateData.lastUpdate)}</span>
-              </div>
-            </div>
-
-            {/* Location */}
-            <div className="flex items-center gap-2 mb-3 text-sm text-gray-600">
-              <MapPin className="h-3.5 w-3.5 text-[#0F5A6B]" />
-              <span>
-                {climateData.city}, {climateData.state}
-              </span>
-            </div>
-
-            {/* Main temp */}
-            <div className="flex items-center gap-3 mb-3">
-              <Sun className="h-7 w-7 text-yellow-500" />
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {climateData.temp}°C
-                </p>
-              </div>
-            </div>
-
-            {/* Other indicators */}
-            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-                  <Droplets className="h-3.5 w-3.5" />
-                  <span className="text-xs uppercase tracking-wide">Umidade</span>
-                </div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {climateData.humidity}%
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-                  <Wind className="h-3.5 w-3.5" />
-                  <span className="text-xs uppercase tracking-wide">Vento</span>
-                </div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {climateData.windSpeed} km/h
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
-                  <CloudRain className="h-3.5 w-3.5" />
-                  <span className="text-xs uppercase tracking-wide">Chuva</span>
-                </div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {climateData.rainChance}%
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
 
       {/* Modal de detalhes */}
       {selectedRecord && (
@@ -355,6 +329,7 @@ export default function DashboardPage() {
                   onClick={() => {
                     setSelectedRecord(null);
                     setIsEditing(false);
+                    setSaveError('');
                   }}
                   className="p-1.5 rounded-xl hover:bg-gray-100 transition text-gray-500"
                 >
@@ -363,6 +338,15 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {isEditing ? (
+              <ApplicationEditForm
+                record={selectedRecord}
+                pilotos={pilotos}
+                fazendas={fazendas}
+                drones={drones}
+                onChange={updateSelectedRecord}
+              />
+            ) : (
             <div className="p-5 space-y-5">
               {/* Seção Principal */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -475,12 +459,15 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+            )}
 
-            <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex gap-3">
+            <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex flex-wrap gap-3">
+              {saveError && <p className="basis-full text-sm text-red-600">{saveError}</p>}
               <button
                 onClick={() => {
                   setSelectedRecord(null);
                   setIsEditing(false);
+                  setSaveError('');
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition text-sm"
               >
@@ -489,9 +476,10 @@ export default function DashboardPage() {
               {isEditing && (
                 <button
                   onClick={handleSaveEdit}
+                  disabled={loading}
                   className="flex-1 px-4 py-2.5 rounded-xl bg-[#39B54A] text-white font-semibold hover:bg-[#39B54A]/90 transition text-sm"
                 >
-                  Salvar Alterações
+                  {loading ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               )}
             </div>
@@ -499,5 +487,49 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function ApplicationEditForm({
+  record,
+  pilotos,
+  fazendas,
+  drones,
+  onChange,
+}: {
+  record: Aplicacao;
+  pilotos: Piloto[];
+  fazendas: Fazenda[];
+  drones: Drone[];
+  onChange: (field: keyof Aplicacao, value: string | number) => void;
+}) {
+  const inputClass = 'w-full rounded-xl border border-gray-300 px-3 py-2 text-sm';
+  return (
+    <div className="p-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <EditField label="Data"><input type="date" value={record.data_aplicacao.split('T')[0]} onChange={(event) => onChange('data_aplicacao', event.target.value)} className={inputClass} /></EditField>
+        <EditField label="Piloto"><select value={record.user_id} onChange={(event) => onChange('user_id', event.target.value)} className={inputClass}>{pilotos.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></EditField>
+        <EditField label="Fazenda"><select value={record.fazenda_id} onChange={(event) => onChange('fazenda_id', event.target.value)} className={inputClass}>{fazendas.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></EditField>
+        <EditField label="Drone"><select value={record.drone_id} onChange={(event) => onChange('drone_id', event.target.value)} className={inputClass}>{drones.map((item) => <option key={item.id} value={item.id}>{item.identificador}</option>)}</select></EditField>
+        <EditField label="Cultura"><input value={record.cultura || ''} onChange={(event) => onChange('cultura', event.target.value)} className={inputClass} /></EditField>
+        <EditField label="Tipo de serviço"><input value={record.tipo_servico || ''} onChange={(event) => onChange('tipo_servico', event.target.value)} className={inputClass} /></EditField>
+        <EditField label="Área (ha)"><input type="number" min="0" step="0.01" value={record.area_ha ?? ''} onChange={(event) => onChange('area_ha', Number(event.target.value))} className={inputClass} /></EditField>
+        <EditField label="Horas de voo"><input type="number" min="0" step="0.1" value={record.horas_voo ?? ''} onChange={(event) => onChange('horas_voo', Number(event.target.value))} className={inputClass} /></EditField>
+        <EditField label="Classe do produto"><input value={record.classe_produto || ''} onChange={(event) => onChange('classe_produto', event.target.value)} className={inputClass} /></EditField>
+        <EditField label="Produto"><input value={record.produto_nome || ''} onChange={(event) => onChange('produto_nome', event.target.value)} className={inputClass} /></EditField>
+        <EditField label="Dosagem"><input type="number" min="0" step="0.01" value={record.dosagem ?? ''} onChange={(event) => onChange('dosagem', Number(event.target.value))} className={inputClass} /></EditField>
+        <EditField label="Unidade"><input value={record.unidade || ''} onChange={(event) => onChange('unidade', event.target.value)} className={inputClass} /></EditField>
+        <EditField label="Número ART"><input value={record.num_art || ''} onChange={(event) => onChange('num_art', event.target.value)} className={inputClass} /></EditField>
+      </div>
+    </div>
+  );
+}
+
+function EditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      {children}
+    </label>
   );
 }
