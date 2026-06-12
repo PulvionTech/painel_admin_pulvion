@@ -64,6 +64,13 @@
 - Recuperação e atualização de senha integradas ao Supabase Auth.
 - Solicitação de acesso por e-mail.
 
+## Instalação como webapp
+
+- Manifesto PWA com nome, cores e ícones PulviOn.
+- Ícones configurados para atalhos no Android, iPhone, iPad e desktop.
+- Exibição standalone quando o painel é adicionado à tela inicial.
+- Service worker mínimo sem cache de dados operacionais ou requisições do Supabase.
+
 ## Pendências para produção
 
 - Proteger rotas `/dashboard`.
