@@ -53,8 +53,11 @@ Padrões predominantes:
 ### Login
 
 - Layout dividido em telas grandes.
-- Painel institucional teal à esquerda.
-- Formulário em card branco à direita.
+- Painel institucional teal à esquerda com benefícios operacionais reais.
+- Formulário em card branco à direita, com inputs iconográficos e feedback visual.
+- Logo escuro no mobile e logo claro no painel institucional.
+- Fluxos de login, recuperação e atualização de senha no mesmo card.
+- Link de solicitação de acesso abre um e-mail endereçado à PulviOn.
 
 ## Componentes compartilhados existentes
 

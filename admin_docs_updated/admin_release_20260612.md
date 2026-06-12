@@ -56,6 +56,14 @@
 - Pré-visualização do PDF e geração para uma única aplicação ou resultado filtrado.
 - Compartilhamento por API nativa quando disponível e fallback para WhatsApp/e-mail.
 
+## Login
+
+- Página responsiva alinhada ao design system PulviOn.
+- Painel institucional com benefícios operacionais do produto.
+- Inputs com ícones, foco visual e exibição de senha.
+- Recuperação e atualização de senha integradas ao Supabase Auth.
+- Solicitação de acesso por e-mail.
+
 ## Pendências para produção
 
 - Proteger rotas `/dashboard`.

@@ -41,6 +41,8 @@ Centralizar a gestão operacional de aplicações agrícolas em uma interface we
 ### Autenticação
 
 - Login e logout com Supabase Auth.
+- Recuperação de acesso e atualização de senha.
+- Solicitação de acesso por e-mail.
 
 ## Persistência
 
